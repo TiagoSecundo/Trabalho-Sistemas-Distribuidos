@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .mono-page {
+        padding: 2rem 0;
+        background: radial-gradient(circle at top right, rgba(20, 184, 166, 0.12) 0%, rgba(20, 184, 166, 0) 36%);
+        min-height: calc(100vh - 56px);
+    }
+
+    .mono-header {
+        border-radius: 18px;
+        padding: 1.4rem;
+        background: linear-gradient(120deg, #0f766e 0%, #0d9488 58%, #14b8a6 100%);
+        color: #fff;
+        box-shadow: 0 18px 35px -24px rgba(15, 118, 110, 0.72);
+        margin-bottom: 1.2rem;
+    }
+
+    .mono-header h1 {
+        margin: 0 0 .35rem;
+        font-weight: 800;
+    }
+
+    .mono-header p {
+        margin: 0;
+        opacity: .95;
+    }
+
+    .mono-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 18px 30px -30px rgba(15, 23, 42, .9);
+        overflow: hidden;
+    }
+
+    .mono-table-wrap {
+        overflow-x: auto;
+    }
+
+    .mono-table {
+        margin-bottom: 0;
+    }
+
+    .mono-table thead th {
+        border-top: 0;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #475569;
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        white-space: nowrap;
+    }
+
+    .mono-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .mono-table td {
+        vertical-align: middle;
+        border-top: 1px solid #f1f5f9;
+        color: #0f172a;
+    }
+
+    .mono-title {
+        font-weight: 700;
+    }
+
+    .mono-date {
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .mono-resumo {
+        color: #334155;
+        max-width: 520px;
+    }
+
+    .mono-empty {
+        text-align: center;
+        padding: 1.8rem 1rem;
+        color: #64748b;
+    }
+</style>
+
+<section class="mono-page">
+    <div class="container">
+        <div class="mono-header">
+            <h1>Monografias</h1>
+            <p>Catálogo de monografias dos alunos com tema, discente responsável, data de publicação e resumo.</p>
+        </div>
+
+        <div class="mono-card">
+            <div class="mono-table-wrap">
+                <table class="table mono-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Título</th>
+                            <th scope="col">Discente</th>
+                            <th scope="col">Data de Publicação</th>
+                            <th scope="col">Resumo</th>
+                            <th scope="col">Orientador</th>
+                            <th scope="col">Coorientador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for monografia in monografias %}
+                        <tr>
+                            <td class="mono-title"><a href="{% url 'detalhes' pk=monografia.pk %}">{{ monografia.titulo }}</a></td>
+                            <td>{{ monografia.discente.name }}</td>
+                            <td class="mono-date">{{ monografia.data_publicacao|date:"d/m/Y" }}</td>
+                            <td class="mono-resumo">{{ monografia.resumo|truncatechars:180 }}</td>
+                            <td>{{ monografia.orientador.name }}</td>
+                            <td>{{ monografia.coorientador.name }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4">
+                                <div class="mono-empty">Nenhuma monografia cadastrada até o momento.</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

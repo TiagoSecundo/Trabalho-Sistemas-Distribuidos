@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .home-hero {
+        padding: 3rem 0 2rem;
+        background: radial-gradient(circle at 10% 10%, rgba(20, 184, 166, 0.14) 0%, rgba(20, 184, 166, 0) 40%),
+            radial-gradient(circle at 90% 20%, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0) 35%);
+    }
+
+    .home-pill {
+        display: inline-block;
+        padding: .35rem .75rem;
+        border-radius: 999px;
+        background: #ccfbf1;
+        color: #115e59;
+        font-weight: 700;
+        font-size: .8rem;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+    }
+
+    .home-title {
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.15;
+        margin-bottom: 1rem;
+    }
+
+    .home-lead {
+        font-size: 1.06rem;
+        color: #334155;
+        max-width: 760px;
+        margin-bottom: 1.25rem;
+    }
+
+    .home-cta .btn {
+        border-radius: 999px;
+        font-weight: 700;
+        padding: .55rem 1.1rem;
+    }
+
+    .home-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 20px 32px -34px rgba(15, 23, 42, 0.95);
+        height: 100%;
+    }
+
+    .home-card .card-body {
+        padding: 1.2rem 1.1rem;
+    }
+
+    .home-card h3 {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .55rem;
+    }
+
+    .home-card p {
+        color: #475569;
+        margin-bottom: 0;
+    }
+
+    .home-section-title {
+        font-size: 1.45rem;
+        font-weight: 800;
+        margin: 2rem 0 1rem;
+        color: #0f172a;
+    }
+
+    .home-flow {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #f8fafc;
+        padding: 1.25rem;
+    }
+
+    .home-flow-step {
+        border-left: 3px solid #14b8a6;
+        padding-left: .9rem;
+        margin-bottom: .9rem;
+    }
+
+    .home-flow-step:last-child {
+        margin-bottom: 0;
+    }
+
+    .home-flow-step h4 {
+        font-size: 1rem;
+        margin: 0 0 .3rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .home-flow-step p {
+        margin: 0;
+        color: #475569;
+    }
+</style>
+
+<section class="home-hero">
+    <div class="container">
+        <span class="home-pill">Gestão acadêmica</span>
+        <h1 class="home-title">Aplicação para gerenciamento de equipe acadêmica</h1>
+        <p class="home-lead">
+            Este sistema organiza informações de membros de uma equipe acadêmica em um único lugar. A proposta é
+            facilitar o acompanhamento de dados importantes, como nome, formação e canais profissionais, deixando o
+            dia a dia mais estruturado para coordenação, pesquisa e colaboração.
+        </p>
+        <div class="home-cta">
+            <a class="btn btn-success mr-2 mb-2" href="/equipe/">Ver equipe</a>
+            <a class="btn btn-outline-secondary mb-2" href="/equipe/adicionar/">Cadastrar integrante</a>
+        </div>
+
+        <h2 class="home-section-title">Por que essa aplicação é útil</h2>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <article class="home-card card">
+                    <div class="card-body">
+                        <h3>Centralização de dados</h3>
+                        <p>Reúne informações essenciais dos integrantes em um painel único, reduzindo retrabalho e perda de contexto.</p>
+                    </div>
+                </article>
+            </div>
+            <div class="col-md-4 mb-3">
+                <article class="home-card card">
+                    <div class="card-body">
+                        <h3>Visão rápida da equipe</h3>
+                        <p>Permite identificar formação acadêmica e perfis profissionais para apoiar distribuição de tarefas e parcerias.</p>
+                    </div>
+                </article>
+            </div>
+            <div class="col-md-4 mb-3">
+                <article class="home-card card">
+                    <div class="card-body">
+                        <h3>Evolução contínua</h3>
+                        <p>Serve como base para futuras melhorias, como filtros, relatórios e indicadores de produtividade acadêmica.</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <h2 class="home-section-title">Fluxo básico de uso</h2>
+        <div class="home-flow">
+            <div class="home-flow-step">
+                <h4>1. Cadastro</h4>
+                <p>O usuário registra integrantes com seus dados profissionais e acadêmicos.</p>
+            </div>
+            <div class="home-flow-step">
+                <h4>2. Consulta</h4>
+                <p>A equipe é exibida em tabela para facilitar leitura, acompanhamento e tomada de decisão.</p>
+            </div>
+            <div class="home-flow-step">
+                <h4>3. Organização</h4>
+                <p>As informações ficam prontas para apoiar planejamento de projetos, pesquisa e atividades institucionais.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

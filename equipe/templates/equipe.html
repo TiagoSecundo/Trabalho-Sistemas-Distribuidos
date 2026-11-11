@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    :root {
+        --equipe-bg: #f4f7fb;
+        --equipe-card: #ffffff;
+        --equipe-primary: #0f766e;
+        --equipe-primary-soft: #ccfbf1;
+        --equipe-title: #0f172a;
+        --equipe-text: #475569;
+        --equipe-border: #e2e8f0;
+    }
+
+    .equipe-page {
+        background: radial-gradient(circle at top right, #dff7f0 0, #f4f7fb 45%, #f8fafc 100%);
+        min-height: calc(100vh - 56px);
+        padding: 2rem 0;
+    }
+
+    .equipe-shell {
+        max-width: 1100px;
+    }
+
+    .equipe-header {
+        background: linear-gradient(120deg, #0f766e 0%, #0d9488 60%, #14b8a6 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: 0 18px 35px -22px rgba(15, 118, 110, 0.7);
+        margin-bottom: 1.25rem;
+    }
+
+    .equipe-header h1 {
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: .2px;
+    }
+
+    .equipe-header p {
+        margin: .45rem 0 0;
+        opacity: .95;
+    }
+
+    .equipe-card {
+        border: 1px solid var(--equipe-border);
+        border-radius: 18px;
+        background: var(--equipe-card);
+        box-shadow: 0 20px 30px -30px rgba(15, 23, 42, 0.8);
+        overflow: hidden;
+    }
+
+    .equipe-table-wrap {
+        overflow-x: auto;
+    }
+
+    .equipe-table {
+        margin-bottom: 0;
+    }
+
+    .equipe-table thead th {
+        border-top: 0;
+        border-bottom: 1px solid var(--equipe-border);
+        color: var(--equipe-text);
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        background: #f8fafc;
+        white-space: nowrap;
+    }
+
+    .equipe-table tbody tr {
+        transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
+    }
+
+    .equipe-table tbody tr:hover {
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: inset 4px 0 0 0 var(--equipe-primary);
+    }
+
+    .equipe-table td {
+        vertical-align: middle;
+        border-top: 1px solid #f1f5f9;
+        color: var(--equipe-title);
+    }
+
+    .member-name {
+        font-weight: 600;
+    }
+
+    .academic-badge {
+        background: var(--equipe-primary-soft);
+        color: #115e59;
+        border-radius: 999px;
+        padding: .3rem .6rem;
+        font-size: .78rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: var(--equipe-text);
+        padding: 2rem 1rem;
+    }
+
+    .muted-link {
+        color: #0f766e;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .muted-link:hover {
+        color: #115e59;
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .equipe-page {
+            padding: 1rem 0;
+        }
+
+        .equipe-header {
+            border-radius: 14px;
+            padding: 1rem;
+        }
+    }
+</style>
+
+<section class="equipe-page">
+    <div class="container equipe-shell">
+        <div class="equipe-header">
+            <h1>Equipe</h1>
+            <p>Visualize os integrantes e suas informações acadêmicas e profissionais.</p>
+        </div>
+
+        <div class="equipe-card">
+            <div class="equipe-table-wrap">
+                <table class="table equipe-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Nome</th>
+                            <th scope="col">Formação Acadêmica</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">GitHub</th>
+                            <th scope="col">LinkedIn</th>
+                            <th scope="col">Lattes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in list %}
+                        <tr>
+                            <td class="member-name">{{ item.name }}</td>
+                            <td><span class="academic-badge">{{ item.get_formacao_academica_display }}</span></td>
+                            <td>{{ item.email }}</td>
+                            <td>
+                                {% if item.github %}
+                                <a class="muted-link" href="{{ item.github }}" target="_blank" rel="noopener noreferrer">Perfil</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.linkedin %}
+                                <a class="muted-link" href="{{ item.linkedin }}" target="_blank" rel="noopener noreferrer">Perfil</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.lattes %}
+                                <a class="muted-link" href="{{ item.lattes }}" target="_blank" rel="noopener noreferrer">Currículo</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-state">
+                                    Nenhum integrante cadastrado ainda.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
