@@ -1,3 +1,5 @@
+{% load static %}
+<!doctype html>
 <html lang="pt-br">
 
 <head>
@@ -77,7 +79,7 @@
         }
 
         .app-toggler .navbar-toggler-icon {
-            filter: invert(1);
+            filter: none;
         }
 
         .app-link {
@@ -113,7 +115,7 @@
         }
 
         .footer-wrap {
-            padding: 1.5rem 0;
+            padding: 1.5rem 15px;
         }
 
         .footer-title {
@@ -143,6 +145,8 @@
         }
     </style>
 
+    <link rel="stylesheet" href="{% static 'home/crud.css' %}">
+    <script src="{% static 'home/crud.js' %}" defer></script>
     <!-- JS, Popper.js, and jQuery -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
         integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
@@ -160,6 +164,10 @@
         {% include 'navbar.html' %}
 
         <main class="app-main">
+            <div class="container pt-3" aria-live="polite">
+                {% for message in messages %}<div class="alert alert-success" role="status">{{ message }}</div>{% endfor %}
+                <div class="alert alert-success" data-flash hidden></div>
+            </div>
             {% block content %}
             {% endblock %}
         </main>
@@ -168,18 +176,18 @@
             <div class="container footer-wrap">
                 <div class="row align-items-center">
                     <div class="col-md-7 mb-3 mb-md-0">
-                        <p class="footer-title">AllTeam</p>
-                        <p class="footer-text">Aplicação de gerenciamento de equipe.</p>
+                        <p class="footer-title">AllTeam Monografias</p>
+                        <p class="footer-text">Organização acadêmica de trabalhos, orientações e bancas.</p>
                     </div>
                     <div class="col-md-5 text-md-right">
-                        <p class="footer-text">Equipe • Home • Cadastro de Integrantes</p>
+                        <p class="footer-text">Alunos · Monografias · Bancas · Avaliações</p>
                     </div>
                 </div>
             </div>
             <div class="footer-mini">
                 <div class="container d-flex justify-content-between flex-wrap">
                     <span>&copy; {% now "Y" %} AllTeam</span>
-                    <span>Feito com Django + Bootstrap</span>
+                    {% if user.is_staff %}<a href="/api/" class="text-light">Referência da API</a>{% endif %}
                 </div>
             </div>
         </footer>

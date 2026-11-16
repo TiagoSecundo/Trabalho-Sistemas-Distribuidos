@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Excluir {{ singular }} · AllTeam Monografias{% endblock %}
+{% block content %}
+<section class="crud-page container">
+    {% include 'crud/cabecalho.html' %}
+    <div class="crud-form-shell crud-card p-4">
+        <h2>Excluir {{ singular }}</h2>
+        {% if erro %}<p class="alert alert-warning" role="alert">{{ erro }}</p>{% else %}
+        <p>Confirma a exclusão de <strong>{{ objeto }}</strong>?</p>
+        <p class="text-muted">Esta ação remove o cadastro. Registros com dependências são protegidos.</p>
+        <form method="post" data-crud-delete>
+            {% csrf_token %}
+            {% include 'crud/feedback.html' %}
+            <button class="btn btn-danger" type="submit">Confirmar exclusão</button>
+        </form>
+        {% endif %}
+        <a href="{{ lista_url }}" class="btn btn-outline-secondary mt-3">Cancelar e voltar</a>
+    </div>
+</section>
+{{ api_config|json_script:'crud-config' }}
+{% endblock %}

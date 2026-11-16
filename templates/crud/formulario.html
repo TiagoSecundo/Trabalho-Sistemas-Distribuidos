@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}{% if editando %}Editar{% else %}Adicionar{% endif %} {{ singular }} · AllTeam Monografias{% endblock %}
+{% block content %}
+<section class="crud-page container">
+    {% include 'crud/cabecalho.html' %}
+    <div class="crud-form-shell">
+        <a href="{{ lista_url }}" class="back-link">← Voltar para {{ titulo|lower }}</a>
+        <h2>{% if editando %}Editar{% else %}Adicionar{% endif %} {{ singular }}</h2>
+        {% if ajuda %}<p class="crud-hint">{{ ajuda }}</p>{% endif %}
+        {% if erro %}<div class="alert alert-warning" role="alert">{{ erro }}</div>{% else %}
+        <div class="crud-card p-4">
+            <form method="post" class="crud-form" data-crud-form>
+                {% csrf_token %}
+                {% include 'crud/feedback.html' %}
+                {{ form.non_field_errors }}
+                <p class="text-muted small">Campos com * são obrigatórios.</p>
+                {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                    {{ field }}
+                    <small id="{{ field.id_for_label }}_helptext" class="form-text text-muted">{{ field.help_text }}</small>
+                    {{ field.errors }}
+                    <div id="{{ field.id_for_label }}_api_error" data-error-for="{{ field.name }}" class="text-danger small"></div>
+                </div>
+                {% endfor %}
+                <div class="crud-actions">
+                    <button type="submit" class="btn app-cta-btn">Salvar {{ singular }}</button>
+                    <a href="{{ lista_url }}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{{ api_config|json_script:'crud-config' }}
+{% endblock %}

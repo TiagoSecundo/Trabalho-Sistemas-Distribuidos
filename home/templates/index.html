@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block title %}AllTeam Monografias · Gestão acadêmica{% endblock %}
 
 {% block content %}
 <style>
@@ -105,60 +106,68 @@
 <section class="home-hero">
     <div class="container">
         <span class="home-pill">Gestão acadêmica</span>
-        <h1 class="home-title">Aplicação para gerenciamento de equipe acadêmica</h1>
+        <h1 class="home-title">Monografias, orientações e bancas<br>em um só lugar.</h1>
         <p class="home-lead">
-            Este sistema organiza informações de membros de uma equipe acadêmica em um único lugar. A proposta é
-            facilitar o acompanhamento de dados importantes, como nome, formação e canais profissionais, deixando o
-            dia a dia mais estruturado para coordenação, pesquisa e colaboração.
+            Organize os trabalhos de conclusão de curso, seus autores e orientadores.
+            Mantenha os cadastros acadêmicos, componha bancas e registre os pareceres
+            dos avaliadores em uma área de gestão integrada.
         </p>
         <div class="home-cta">
-            <a class="btn btn-success mr-2 mb-2" href="/equipe/">Ver equipe</a>
-            <a class="btn btn-outline-secondary mb-2" href="/equipe/adicionar/">Cadastrar integrante</a>
+            {% if user.is_authenticated and user.is_staff %}
+            <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'monografias:index' %}">Gerenciar monografias</a>
+            <a class="btn btn-outline-secondary mb-2" href="{% url 'monografias:adicionar' %}">Adicionar monografia</a>
+            {% else %}
+            <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'login' %}">Entrar na área de gestão</a>
+            {% endif %}
         </div>
 
-        <h2 class="home-section-title">Por que essa aplicação é útil</h2>
+        <h2 class="home-section-title">O que você pode organizar</h2>
         <div class="row">
             <div class="col-md-4 mb-3">
                 <article class="home-card card">
                     <div class="card-body">
-                        <h3>Centralização de dados</h3>
-                        <p>Reúne informações essenciais dos integrantes em um painel único, reduzindo retrabalho e perda de contexto.</p>
+                        <h3>Cadastros acadêmicos</h3>
+                        <p>Alunos, professores e cursos conectados aos trabalhos e às orientações.</p>
+                        <a href="{% url 'equipe:index' %}" class="d-inline-block mt-3">Acessar cadastros →</a>
                     </div>
                 </article>
             </div>
             <div class="col-md-4 mb-3">
                 <article class="home-card card">
                     <div class="card-body">
-                        <h3>Visão rápida da equipe</h3>
-                        <p>Permite identificar formação acadêmica e perfis profissionais para apoiar distribuição de tarefas e parcerias.</p>
+                        <h3>Monografias</h3>
+                        <p>Títulos, resumos, palavras-chave e vínculos acadêmicos de cada trabalho.</p>
+                        <a href="{% url 'monografias:index' %}" class="d-inline-block mt-3">Consultar trabalhos →</a>
                     </div>
                 </article>
             </div>
             <div class="col-md-4 mb-3">
                 <article class="home-card card">
                     <div class="card-body">
-                        <h3>Evolução contínua</h3>
-                        <p>Serve como base para futuras melhorias, como filtros, relatórios e indicadores de produtividade acadêmica.</p>
+                        <h3>Bancas e avaliações</h3>
+                        <p>Horários, participantes internos e externos, notas e pareceres reunidos por trabalho.</p>
+                        <a href="{% url 'monografias:recurso-lista' 'bancas' %}" class="d-inline-block mt-3">Organizar bancas →</a>
                     </div>
                 </article>
             </div>
         </div>
 
-        <h2 class="home-section-title">Fluxo básico de uso</h2>
+        <h2 class="home-section-title">Por onde começar</h2>
         <div class="home-flow">
             <div class="home-flow-step">
-                <h4>1. Cadastro</h4>
-                <p>O usuário registra integrantes com seus dados profissionais e acadêmicos.</p>
+                <h4>1. Prepare os cadastros</h4>
+                <p>Cadastre professores, depois cursos e alunos. Esses vínculos identificam quem participa de cada trabalho.</p>
             </div>
             <div class="home-flow-step">
-                <h4>2. Consulta</h4>
-                <p>A equipe é exibida em tabela para facilitar leitura, acompanhamento e tomada de decisão.</p>
+                <h4>2. Registre a monografia</h4>
+                <p>Informe o tema e o resumo, selecione o aluno, seu curso e o professor orientador.</p>
             </div>
             <div class="home-flow-step">
-                <h4>3. Organização</h4>
-                <p>As informações ficam prontas para apoiar planejamento de projetos, pesquisa e atividades institucionais.</p>
+                <h4>3. Organize a banca e os pareceres</h4>
+                <p>Cadastre a banca, vincule os participantes e registre uma avaliação para cada avaliador.</p>
             </div>
         </div>
+        <p class="crud-hint mt-3">Área administrativa em desenvolvimento. Submissão, aprovação e publicação dos trabalhos serão disponibilizadas em uma próxima etapa.</p>
     </div>
 </section>
 {% endblock %}

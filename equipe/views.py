@@ -1,28 +1,35 @@
-from django.shortcuts import render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_http_methods, require_safe
 
-from equipe.models import Equipe
+from Curso_Django import interface
+from .interface import recurso
 
-from .forms import EquipeForm
 
-# Create your views here.
+@staff_member_required(login_url='login')
+@require_safe
 def index(request):
-    equipe = Equipe.objects.all()  # Fetch all equipe objects from the database
+    return interface.listar(request, recurso(request.GET.get('tipo', 'aluno')), 'equipe.html')
 
-    context = {
-        'list': equipe,  # Pass the equipe objects to the template context
-    } 
-    return render(request, 'equipe.html', context)
 
+@staff_member_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
 def adicionar(request):
-    form = EquipeForm()
-    if request.method == 'POST':
-        form = EquipeForm(request.POST)
-        if form.is_valid():
-            post = form.save()
-            post.save()
-            form = EquipeForm()
-            return render(request, 'adicionar_equipe.html', {'form': form})
-    else:
-        form = EquipeForm()
-    
-    return render(request, 'adicionar_equipe.html', {'form': form})
+    return interface.formulario(request, recurso(request.GET.get('tipo', 'aluno')), template='adicionar_equipe.html')
+
+
+@staff_member_required(login_url='login')
+@require_safe
+def detalhes(request, tipo, pk):
+    return interface.detalhes(request, recurso(tipo), pk)
+
+
+@staff_member_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def editar(request, tipo, pk):
+    return interface.formulario(request, recurso(tipo), pk, 'adicionar_equipe.html')
+
+
+@staff_member_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def excluir(request, tipo, pk):
+    return interface.excluir(request, recurso(tipo), pk)

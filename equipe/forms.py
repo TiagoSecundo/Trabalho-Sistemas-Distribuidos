@@ -1,7 +1,23 @@
 from django import forms
-from .models import Equipe
+from .models import Aluno, Curso, Professor
 
-class EquipeForm(forms.ModelForm):
+
+class AlunoForm(forms.ModelForm):
     class Meta:
-        model = Equipe
-        fields = "__all__"
+        model = Aluno
+        fields = ['nome', 'matricula', 'email', 'curso', 'orientador_atual']
+        labels = {'matricula': 'Matrícula'}
+
+
+class ProfessorForm(forms.ModelForm):
+    class Meta:
+        model = Professor
+        fields = ['nome', 'email', 'departamento', 'area_pesquisa']
+        labels = {'area_pesquisa': 'Área de pesquisa'}
+
+
+class CursoForm(forms.ModelForm):
+    class Meta:
+        model = Curso
+        fields = ['nome', 'codigo', 'coordenador']
+        labels = {'codigo': 'Código'}

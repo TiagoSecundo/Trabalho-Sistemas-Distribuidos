@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}{{ titulo }} · AllTeam Monografias{% endblock %}
+{% block content %}
+<section class="crud-page container" data-crud-list>
+    {% include 'crud/cabecalho.html' %}
+    {% if ajuda %}<p class="crud-hint">{{ ajuda }}</p>{% endif %}
+    <div class="crud-card">
+        <div class="crud-toolbar">
+            <form data-search role="search" class="crud-search">
+                <label for="busca">Buscar em {{ titulo|lower }}</label>
+                <div class="d-flex">
+                    <input type="search" id="busca" name="search" class="form-control" placeholder="Digite um nome ou termo">
+                    <button type="submit" class="btn btn-outline-secondary ml-2">Buscar</button>
+                </div>
+            </form>
+            <a class="btn app-cta-btn" href="{{ adicionar_url }}">Adicionar {{ singular }}</a>
+        </div>
+        <div class="px-3">{% include 'crud/feedback.html' %}</div>
+        <p class="small text-muted d-sm-none px-3">Deslize a tabela para consultar todas as colunas e ações.</p>
+        <div class="table-responsive">
+            <table class="table crud-table">
+                <caption class="sr-only">Lista de {{ titulo|lower }}</caption>
+                <thead><tr>{% for campo, label in colunas %}<th scope="col">{{ label }}</th>{% endfor %}<th scope="col">Ações</th></tr></thead>
+                <tbody data-rows>
+                    {% for linha in linhas %}
+                    <tr>{% for valor in linha.celulas %}<td>{{ valor }}</td>{% endfor %}
+                        <td class="crud-actions"><a href="{{ linha.detalhes }}">Consultar</a><a href="{{ linha.editar }}">Editar</a><a href="{{ linha.excluir }}" class="text-danger">Excluir</a></td>
+                    </tr>
+                    {% empty %}<tr><td colspan="{{ colunas|length|add:1 }}" class="crud-empty">Nenhum registro cadastrado. Use “Adicionar {{ singular }}” para começar.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="crud-pagination">
+            <span data-count role="status"></span>
+            <div><button type="button" data-previous class="btn btn-outline-secondary" disabled>Anterior</button>
+            <button type="button" data-next class="btn btn-outline-secondary" disabled>Próxima</button>
+            <button type="button" data-retry class="btn btn-outline-secondary" hidden>Tentar novamente</button></div>
+        </div>
+    </div>
+    <noscript><p class="crud-hint">A primeira página está disponível. Ative o JavaScript para buscar e navegar pelas demais páginas.</p></noscript>
+</section>
+{{ api_config|json_script:'crud-config' }}
+{% endblock %}
