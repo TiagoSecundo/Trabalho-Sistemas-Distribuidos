@@ -13,3 +13,10 @@ class BancaService(ServicoCRUD):
     def validar_alteracao(cls, instance):
         if instance.status != 'AGENDADA':
             raise OperacaoNaoPermitida('Uma banca realizada ou cancelada não pode ser alterada ou excluída.')
+
+
+class AvaliacaoService(ServicoCRUD):
+    @classmethod
+    def validar_alteracao(cls, instance):
+        if instance.finalizada_em:
+            raise OperacaoNaoPermitida('Uma avaliação finalizada não pode ser alterada ou excluída.')

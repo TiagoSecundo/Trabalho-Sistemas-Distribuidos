@@ -3,7 +3,7 @@ from rest_framework import serializers
 from Curso_Django.api import ModelSerializerValidado
 
 from .models import Avaliacao, Banca, MembroExterno, Monografia, ParticipacaoBanca
-from .services import MonografiaService, BancaService
+from .services import AvaliacaoService, BancaService, MonografiaService
 
 
 class MonografiaSerializer(ModelSerializerValidado):
@@ -52,3 +52,18 @@ class ParticipacaoBancaSerializer(ModelSerializerValidado):
         model = ParticipacaoBanca
         fields = ['id', 'banca', 'professor', 'membro_externo', 'papel', 'convite_status', 'confirmado_em', 'monografia_titulo', 'participante_nome', 'papel_descricao', 'convite_descricao']
         read_only_fields = ['convite_status', 'confirmado_em']
+
+
+class AvaliacaoSerializer(ModelSerializerValidado):
+    service_class = AvaliacaoService
+    participante_nome = serializers.SerializerMethodField()
+    monografia_titulo = serializers.CharField(source='participacao.banca.monografia.titulo', read_only=True)
+    recomendacao_descricao = serializers.CharField(source='get_recomendacao_display', read_only=True)
+
+    def get_participante_nome(self, instance):
+        return str(instance.participacao.professor or instance.participacao.membro_externo)
+
+    class Meta:
+        model = Avaliacao
+        fields = ['id', 'participacao', 'nota', 'parecer', 'recomendacao', 'registrada_em', 'finalizada_em', 'participante_nome', 'monografia_titulo', 'recomendacao_descricao']
+        read_only_fields = ['registrada_em', 'finalizada_em']

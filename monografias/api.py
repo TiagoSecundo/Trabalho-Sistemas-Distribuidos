@@ -1,7 +1,7 @@
 from Curso_Django.api import CRUDViewSet
 
 from .models import Avaliacao, Banca, MembroExterno, Monografia, ParticipacaoBanca
-from .serializers import MonografiaSerializer, BancaSerializer, MembroExternoSerializer, ParticipacaoBancaSerializer
+from .serializers import AvaliacaoSerializer, BancaSerializer, MembroExternoSerializer, MonografiaSerializer, ParticipacaoBancaSerializer
 
 
 class MonografiaViewSet(CRUDViewSet):
@@ -30,3 +30,10 @@ class ParticipacaoBancaViewSet(CRUDViewSet):
     serializer_class = ParticipacaoBancaSerializer
     search_fields = ['professor__nome', 'membro_externo__nome']
     ordering_fields = ['id', 'banca']
+
+
+class AvaliacaoViewSet(CRUDViewSet):
+    queryset = Avaliacao.objects.select_related('participacao__banca__monografia', 'participacao__professor', 'participacao__membro_externo')
+    serializer_class = AvaliacaoSerializer
+    search_fields = ['parecer', 'participacao__banca__monografia__titulo']
+    ordering_fields = ['id', 'nota', 'registrada_em']
