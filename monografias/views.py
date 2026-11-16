@@ -1,34 +1,35 @@
-from django.shortcuts import get_object_or_404, render
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_http_methods, require_safe
 
-from .forms import MonografiaForm
-from monografias.models import Monografia
-
-# Create your views here.
-def index(request):
-    monografias = Monografia.objects.select_related('discente').order_by('-data_publicacao')
-    context = {
-        'monografias': monografias,
-    }
-    return render(request, 'monografias.html', context)
+from Curso_Django import interface
+from .interface import recurso
 
 
-def adicionar(request):
-    form = MonografiaForm()
-    if request.method == "POST":
-        form = MonografiaForm(request.POST)
-        if form.is_valid():
-            form.save()
-            form = MonografiaForm()
-    return render(request, "adicionar_monografia.html", {"form": form})
-               
+@staff_member_required(login_url='login')
+@require_safe
+def index(request, tipo='monografias'):
+    return interface.listar(request, recurso(tipo), 'monografias.html')
 
-def detalhes(request, pk):
-    monografia = get_object_or_404(
-        Monografia.objects.select_related("discente", "orientador", "coorientador"),
-        pk=pk,
-    )
-    context = {
-        "monografia": monografia,
-    }
 
-    return render(request, "detalhes.html", context)
+@staff_member_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def adicionar(request, tipo='monografias'):
+    return interface.formulario(request, recurso(tipo), template='adicionar_monografia.html')
+
+
+@staff_member_required(login_url='login')
+@require_safe
+def detalhes(request, pk, tipo='monografias'):
+    return interface.detalhes(request, recurso(tipo), pk, 'detalhes.html')
+
+
+@staff_member_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def editar(request, pk, tipo='monografias'):
+    return interface.formulario(request, recurso(tipo), pk, 'adicionar_monografia.html')
+
+
+@staff_member_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def excluir(request, pk, tipo='monografias'):
+    return interface.excluir(request, recurso(tipo), pk, 'confirmar_exclusao.html')

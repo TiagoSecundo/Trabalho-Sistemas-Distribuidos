@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Consultar {{ singular }} · AllTeam Monografias{% endblock %}
+{% block content %}
+<section class="crud-page container" data-crud-detail>
+    {% include 'crud/cabecalho.html' %}
+    <a href="{{ lista_url }}" class="back-link">← Voltar para {{ titulo|lower }}</a>
+    <article class="crud-card p-4">
+        <h2>Detalhes de {{ singular }}</h2>
+        {% include 'crud/feedback.html' %}
+        <dl class="crud-details" data-values>{% for label, valor in valores %}<div><dt>{{ label }}</dt><dd>{{ valor }}</dd></div>{% endfor %}</dl>
+        {% if bloqueio %}<p class="alert alert-info">{{ bloqueio }}</p>{% else %}
+        <div class="crud-actions"><a href="{{ editar_url }}" class="btn app-cta-btn">Editar</a><a href="{{ excluir_url }}" class="btn btn-outline-danger">Excluir</a></div>
+        {% endif %}
+    </article>
+</section>
+{{ api_config|json_script:'crud-config' }}
+{% endblock %}

@@ -1,32 +1,24 @@
-<nav class="navbar navbar-expand-lg app-navbar">
+<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
   <div class="container">
-    <a class="navbar-brand app-brand" href="/">
-      <span class="brand-dot"></span>
-      AllTeam
+    <a class="navbar-brand app-brand" href="{% url 'index' %}">
+      <span class="brand-dot" aria-hidden="true"></span> AllTeam <small>Monografias</small>
     </a>
-
     <button class="navbar-toggler app-toggler" type="button" data-toggle="collapse" data-target="#mainNavbar"
       aria-controls="mainNavbar" aria-expanded="false" aria-label="Alternar navegação">
       <span class="navbar-toggler-icon"></span>
     </button>
-
     <div class="collapse navbar-collapse" id="mainNavbar">
       <ul class="navbar-nav ml-auto align-items-lg-center">
-        <li class="nav-item">
-          <a class="nav-link app-link" href="/">Início</a>
+        <li class="nav-item"><a class="nav-link app-link" href="{% url 'index' %}" {% if request.path == '/' %}aria-current="page"{% endif %}>Início</a></li>
+        {% if user.is_authenticated and user.is_staff %}
+        <li class="nav-item"><a class="nav-link app-link" href="{% url 'equipe:index' %}" {% if request.resolver_match.namespace == 'equipe' %}aria-current="page"{% endif %}>Cadastros</a></li>
+        <li class="nav-item"><a class="nav-link app-link" href="{% url 'monografias:index' %}" {% if request.resolver_match.namespace == 'monografias' %}aria-current="page"{% endif %}>Monografias e bancas</a></li>
+        <li class="nav-item ml-lg-3">
+          <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="btn btn-outline-light btn-sm">Sair</button></form>
         </li>
-        <li class="nav-item">
-          <a class="nav-link app-link" href="/equipe/">Equipe</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link app-link" href="/monografias/">Monografias</a>
-        </li>
-        <li class="nav-item ml-lg-2 mt-2 mt-lg-0">
-          <a class="btn app-cta-btn" href="/monografias/adicionar/">Adicionar monografia</a>
-        </li>
-        <li class="nav-item ml-lg-2 mt-2 mt-lg-0">
-          <a class="btn app-cta-btn" href="/equipe/adicionar/">Adicionar integrante</a>
-        </li>
+        {% else %}
+        <li class="nav-item ml-lg-2"><a class="btn app-cta-btn" href="{% url 'login' %}">Entrar</a></li>
+        {% endif %}
       </ul>
     </div>
   </div>

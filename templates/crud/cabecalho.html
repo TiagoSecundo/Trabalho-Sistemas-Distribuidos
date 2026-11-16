@@ -1,0 +1,10 @@
+<nav class="resource-nav" aria-label="Cadastros relacionados">
+    {% for item in navegacao %}
+    <a href="{{ item.url }}" {% if item.ativo %}class="active" aria-current="page"{% endif %}>{{ item.titulo }}</a>
+    {% endfor %}
+</nav>
+<header class="crud-header">
+    <span class="section-label">Gestão de monografias · Área administrativa</span>
+    <h1>{% block heading %}{{ titulo }}{% endblock %}</h1>
+    <p>{{ descricao }}</p>
+</header>
