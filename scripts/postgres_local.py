@@ -24,7 +24,10 @@ DATA_DIR = LOCAL_DIR / 'data'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('start', 'stop', 'status'))
+    parser.add_argument('--test-database', action='store_true', help='Prepara também o banco isolado para manage.py test --keepdb.')
     args = parser.parse_args()
+    if args.test_database and args.action != 'start':
+        parser.error('--test-database só pode ser usado com start.')
 
     pg_config = shutil.which('pg_config')
     if not pg_config:
@@ -92,6 +95,16 @@ def main():
                         sql.Identifier(cfg['NAME']), sql.Identifier(cfg['USER']),
                     ),
                 )
+            if args.test_database:
+                test_name = 'test_' + cfg['NAME']
+                cursor.execute('SELECT 1 FROM pg_database WHERE datname = %s', (test_name,))
+                if cursor.fetchone() is None:
+                    cursor.execute(
+                        sql.SQL('CREATE DATABASE {} OWNER {}').format(
+                            sql.Identifier(test_name), sql.Identifier(cfg['USER']),
+                        ),
+                    )
+                print(f'Banco de testes {test_name} pronto para manage.py test --keepdb.')
     finally:
         conn.close()
 
