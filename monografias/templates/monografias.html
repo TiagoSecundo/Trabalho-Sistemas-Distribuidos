@@ -109,11 +109,11 @@
                         {% for monografia in monografias %}
                         <tr>
                             <td class="mono-title"><a href="{% url 'detalhes' pk=monografia.pk %}">{{ monografia.titulo }}</a></td>
-                            <td>{{ monografia.discente.name }}</td>
+                            <td>{{ monografia.aluno.nome }}</td>
                             <td class="mono-date">{{ monografia.data_publicacao|date:"d/m/Y" }}</td>
                             <td class="mono-resumo">{{ monografia.resumo|truncatechars:180 }}</td>
-                            <td>{{ monografia.orientador.name }}</td>
-                            <td>{{ monografia.coorientador.name }}</td>
+                            <td>{{ monografia.orientador.nome }}</td>
+                            <td>{{ monografia.coorientador.nome }}</td>
                         </tr>
                         {% empty %}
                         <tr>

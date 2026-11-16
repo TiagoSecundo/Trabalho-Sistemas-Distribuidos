@@ -94,13 +94,13 @@
                 <div class="row">
                     <div class="col-md-4">
                         <span class="det-label">Discente</span>
-                        <p class="det-value">{{ monografia.discente.name }}</p>
+                        <p class="det-value">{{ monografia.aluno.nome }}</p>
                     </div>
                     <div class="col-md-4">
                         <span class="det-label">Orientador</span>
                         <p class="det-value">
                             {% if monografia.orientador %}
-                            {{ monografia.orientador.name }}
+                            {{ monografia.orientador.nome }}
                             {% else %}
                             Não informado
                             {% endif %}
@@ -110,7 +110,7 @@
                         <span class="det-label">Coorientador</span>
                         <p class="det-value">
                             {% if monografia.coorientador %}
-                            {{ monografia.coorientador.name }}
+                            {{ monografia.coorientador.nome }}
                             {% else %}
                             Não informado
                             {% endif %}

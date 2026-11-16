@@ -5,7 +5,7 @@ from monografias.models import Monografia
 
 # Create your views here.
 def index(request):
-    monografias = Monografia.objects.select_related('discente').order_by('-data_publicacao')
+    monografias = Monografia.objects.select_related('aluno').order_by('-data_publicacao')
     context = {
         'monografias': monografias,
     }
@@ -24,7 +24,7 @@ def adicionar(request):
 
 def detalhes(request, pk):
     monografia = get_object_or_404(
-        Monografia.objects.select_related("discente", "orientador", "coorientador"),
+        Monografia.objects.select_related("aluno", "orientador", "coorientador"),
         pk=pk,
     )
     context = {
