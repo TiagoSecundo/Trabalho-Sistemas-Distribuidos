@@ -20,7 +20,9 @@ from django.urls import path, include
 from home.forms import LoginAdministrativoForm
 
 urlpatterns = [
-    path('entrar/', LoginView.as_view(template_name='registration/login.html', authentication_form=LoginAdministrativoForm), name='login'),
+    path(
+    'entrar/',
+    LoginView.as_view(template_name='registration/login.html', authentication_form=LoginAdministrativoForm, next_page='/monografias/'), name='login'),
     path('sair/', LogoutView.as_view(), name='logout'),
     path('admin/', admin.site.urls),
     path('api/', include('Curso_Django.api_urls')),
@@ -28,4 +30,7 @@ urlpatterns = [
     path('', include('home.urls')),
     path('equipe/', include('equipe.urls')),
     path('monografias/', include('monografias.urls')),
+    path('accounts/', include('allauth.urls')),
+    path('usuarios/', include('usuarios.urls')),
+    path('api/usuarios/', include('usuarios.api_urls')),
 ]

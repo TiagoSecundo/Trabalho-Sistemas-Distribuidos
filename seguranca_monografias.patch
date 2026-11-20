@@ -1,0 +1,744 @@
+diff --git a/usuarios/permissions.py b/usuarios/permissions.py
+index 0fc6a7a..80dfe0d 100644
+--- a/usuarios/permissions.py
++++ b/usuarios/permissions.py
+@@ -1,3 +1,4 @@
++"""Autorização por papel e vínculo acadêmico (análogo ao @PreAuthorize)."""
+ from rest_framework.permissions import BasePermission
+ from .roles import obter_papeis
+ 
+@@ -14,4 +15,45 @@ class IsProfessor(BasePermission):
+ 
+ class IsCoordenador(BasePermission):
+     def has_permission(self, request, view):
+-        return 'Coordenador' in obter_papeis(request.user)
+\ No newline at end of file
++        return 'Coordenador' in obter_papeis(request.user)
++
++
++class IsAcademicoOuAdministrador(BasePermission):
++    def has_permission(self, request, view):
++        return bool(obter_papeis(request.user))
++
++
++class IsDonoMonografia(BasePermission):
++    """Use com views que chamam check_object_permissions/get_object()."""
++    def has_permission(self, request, view):
++        return 'Aluno' in obter_papeis(request.user)
++
++    def has_object_permission(self, request, view, obj):
++        return obj.aluno.usuario_id == request.user.pk
++
++
++class IsOrientadorMonografia(BasePermission):
++    def has_permission(self, request, view):
++        return 'Professor' in obter_papeis(request.user)
++
++    def has_object_permission(self, request, view, obj):
++        return obj.orientador.usuario_id == request.user.pk
++
++
++class IsCoordenadorMonografia(BasePermission):
++    def has_permission(self, request, view):
++        return 'Coordenador' in obter_papeis(request.user)
++
++    def has_object_permission(self, request, view, obj):
++        return obj.curso.coordenador_id is not None and obj.curso.coordenador.usuario_id == request.user.pk
++
++
++class IsProfessorAvaliador(BasePermission):
++    """Autoriza um professor apenas em sua própria participação/avaliação."""
++    def has_permission(self, request, view):
++        return 'Professor' in obter_papeis(request.user)
++
++    def has_object_permission(self, request, view, obj):
++        # A view pode receber Avaliacao ou ParticipacaoBanca.
++        participacao = getattr(obj, 'participacao', obj)
++        return participacao.professor_id is not None and participacao.professor.usuario_id == request.user.pk
+diff --git a/usuarios/api.py b/usuarios/api.py
+index e20c525..5b59481 100644
+--- a/usuarios/api.py
++++ b/usuarios/api.py
+@@ -1,64 +1,180 @@
+-from rest_framework.views import APIView
+-from rest_framework.permissions import IsAuthenticated
+-from rest_framework.response import Response
+-from rest_framework import serializers, generics
++"""Endpoints acadêmicos independentes do CRUD administrativo legado."""
++from django.db import transaction
++from django.db.models.deletion import ProtectedError
+ from django.db.models import Q
+-
+-from monografias.models import Monografia
+-
++from django.shortcuts import get_object_or_404
++from django.utils import timezone
++from rest_framework import generics, serializers, status, viewsets
++from rest_framework.permissions import AllowAny, IsAuthenticated
++from rest_framework.response import Response
++from rest_framework.views import APIView
++from rest_framework.exceptions import PermissionDenied, ValidationError
++
++from equipe.models import Aluno
++from monografias.models import HistoricoAcao, Monografia, ParticipacaoBanca
++from monografias.serializers import MonografiaSerializer
++from monografias.services import MonografiaService
++from Curso_Django.api import Conflito
++from Curso_Django.services import OperacaoNaoPermitida
++from .convites import emitir_token, validar_token
++from .permissions import IsAcademicoOuAdministrador, IsDonoMonografia
+ from .roles import obter_papeis
+ 
+ 
+ class MinhaContaView(APIView):
+-
+     permission_classes = [IsAuthenticated]
+ 
+     def get(self, request):
+         usuario = request.user
+-
+         return Response({
+-            'id': usuario.id,
+-            'username': usuario.username,
++            'id': usuario.pk,
++            'username': usuario.get_username(),
+             'email': usuario.email,
+-            'papeis': obter_papeis(usuario)
++            'papeis': obter_papeis(usuario),
+         })
+ 
++
+ class MonografiaResumoSerializer(serializers.ModelSerializer):
+     class Meta:
+         model = Monografia
+-        fields = [
+-            'id',
+-            'titulo',
+-            'status_fluxo'
+-        ]
++        fields = ['id', 'titulo', 'status_fluxo']
+ 
+-class MinhasMonografiasView(generics.ListAPIView):
+-
+-    permission_classes = [IsAuthenticated]
+ 
++class MinhasMonografiasView(generics.ListAPIView):
++    permission_classes = [IsAuthenticated, IsAcademicoOuAdministrador]
+     serializer_class = MonografiaResumoSerializer
+ 
+     def get_queryset(self):
+         usuario = self.request.user
+         papeis = obter_papeis(usuario)
+-
+-        monografias = Monografia.objects.all()
+-
++        queryset = Monografia.objects.all()
+         if 'Administrador' in papeis:
+-            return monografias
+-
++            return queryset
+         filtros = Q(pk__in=[])
+-
+         if 'Aluno' in papeis:
+             filtros |= Q(aluno__usuario=usuario)
+-
+         if 'Professor' in papeis:
+-            filtros |= Q(orientador__usuario=usuario)
+-            filtros |= Q(coorientador__usuario=usuario)
+-
++            filtros |= Q(orientador__usuario=usuario) | Q(coorientador__usuario=usuario)
+         if 'Coordenador' in papeis:
+-            filtros |= Q(
+-                curso__coordenador__usuario=usuario
++            filtros |= Q(curso__coordenador__usuario=usuario)
++        return queryset.filter(filtros).distinct()
++
++
++class RascunhoAlunoSerializer(MonografiaSerializer):
++    """Aluno NÃO pode escolher o dono nem alterar estados via JSON."""
++    class Meta(MonografiaSerializer.Meta):
++        read_only_fields = list(MonografiaSerializer.Meta.read_only_fields) + ['aluno', 'curso']
++
++    def validate(self, attrs):
++        if self.instance is None:
++            usuario = self.context['request'].user
++            # Os vínculos vêm sempre do servidor, nunca do corpo do POST.
++            aluno = Aluno.objects.select_related('curso').get(usuario=usuario)
++            attrs['aluno'] = aluno
++            attrs['curso'] = aluno.curso
++        return super().validate(attrs)
++
++
++class RascunhoAlunoViewSet(viewsets.ModelViewSet):
++    """CRUD acadêmico apenas dos próprios TCCs; mudanças somente em RASCUNHO."""
++    permission_classes = [IsAuthenticated, IsDonoMonografia]
++    serializer_class = RascunhoAlunoSerializer
++    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
++
++    def get_queryset(self):
++        return Monografia.objects.select_related('aluno', 'curso', 'orientador').filter(
++            aluno__usuario=self.request.user
++        )
++
++    def perform_create(self, serializer):
++        with transaction.atomic():
++            instance = serializer.save()
++            HistoricoAcao.objects.create(
++                ator=self.request.user, objeto=f'Monografia:{instance.pk}',
++                acao='RASCUNHO_CRIADO', detalhes={'monografia_id': instance.pk}
++            )
++
++    def perform_update(self, serializer):
++        try:
++            with transaction.atomic():
++                instance = serializer.save()  # MonografiaService bloqueia não-rascunhos
++                HistoricoAcao.objects.create(
++                    ator=self.request.user, objeto=f'Monografia:{instance.pk}',
++                    acao='RASCUNHO_ALTERADO', detalhes={'monografia_id': instance.pk}
++                )
++        except OperacaoNaoPermitida as exc:
++            raise Conflito(str(exc)) from exc
++
++    def perform_destroy(self, instance):
++        try:
++            with transaction.atomic():
++                MonografiaService.excluir(instance)  # nunca chamar instance.delete() diretamente
++                HistoricoAcao.objects.create(
++                    ator=self.request.user, objeto=f'Monografia:{instance.pk}',
++                    acao='RASCUNHO_EXCLUIDO', detalhes={'monografia_id': instance.pk}
++                )
++        except (OperacaoNaoPermitida, ProtectedError) as exc:
++            raise Conflito('Monografia não pode ser excluída neste estado.') from exc
++
++
++class EmitirConviteExternoView(APIView):
++    """Token aleatório entregue uma única vez ao emissor autorizado, nunca armazenado em claro."""
++    permission_classes = [IsAuthenticated]
++
++    def post(self, request, pk):
++        with transaction.atomic():
++            participacao = get_object_or_404(
++                ParticipacaoBanca.objects.select_for_update().select_related(
++                    'banca__monografia__curso__coordenador', 'membro_externo'
++                ), pk=pk,
++            )
++            curso = participacao.banca.monografia.curso
++            coordenador = curso.coordenador
++            autorizado = request.user.is_staff or (
++                'Coordenador' in obter_papeis(request.user)
++                and coordenador is not None
++                and coordenador.usuario_id == request.user.pk
++            )
++            if not autorizado:
++                raise PermissionDenied('Apenas a coordenação deste curso ou administração pode emitir o convite.')
++            if participacao.membro_externo_id is None:
++                raise ValidationError({'participacao': 'Esta participação não é de membro externo.'})
++            if participacao.banca.monografia.status_fluxo not in ('APROVADA_ORIENTADOR', 'BANCA_AGENDADA'):
++                raise ValidationError({'monografia': 'A submissão precisa ser aprovada pelo orientador.'})
++            if participacao.banca.status != 'AGENDADA' or participacao.convite_status != 'CONVIDADO':
++                raise ValidationError({'convite': 'Esta participação não está aguardando convite.'})
++            token = emitir_token(participacao)
++            HistoricoAcao.objects.create(
++                ator=request.user, objeto=f'ParticipacaoBanca:{participacao.pk}',
++                acao='CONVITE_EXTERNO_EMITIDO', detalhes={'participacao_id': participacao.pk}
+             )
++        # Em produção: entregar por e-mail/evento seguro, por HTTPS. Não logar o token.
++        return Response({'token': token, 'expira_em': participacao.expira_em})
+ 
+-        return monografias.filter(filtros).distinct()
+\ No newline at end of file
++
++class ConfirmarConviteExternoView(APIView):
++    """Externo confirma sem conta permanente, exclusivamente por token."""
++    authentication_classes = []
++    permission_classes = [AllowAny]
++
++    def post(self, request, pk):
++        token = request.data.get('token')
++        with transaction.atomic():
++            participacao = get_object_or_404(
++                ParticipacaoBanca.objects.select_for_update(), pk=pk
++            )
++            if (
++                participacao.membro_externo_id is None
++                or participacao.convite_status != 'CONVIDADO'
++                or participacao.banca.status != 'AGENDADA'
++                or not validar_token(participacao, token)
++            ):
++                raise PermissionDenied('Convite inválido, expirado ou já confirmado.')
++            participacao.convite_status = 'CONFIRMADO'
++            participacao.confirmado_em = timezone.now()
++            participacao.save(update_fields=['convite_status', 'confirmado_em'])
++            HistoricoAcao.objects.create(
++                ator=None, objeto=f'ParticipacaoBanca:{participacao.pk}',
++                acao='CONVITE_EXTERNO_CONFIRMADO', detalhes={'participacao_id': participacao.pk}
++            )
++        return Response({'confirmado': True})
+diff --git a/usuarios/api_urls.py b/usuarios/api_urls.py
+index c91804f..3ef7657 100644
+--- a/usuarios/api_urls.py
++++ b/usuarios/api_urls.py
+@@ -1,9 +1,16 @@
+ from django.urls import path
+-from .api import MinhaContaView
+-
+-from .api import MinhaContaView, MinhasMonografiasView
++from .api import (
++    MinhaContaView, MinhasMonografiasView, RascunhoAlunoViewSet,
++    EmitirConviteExternoView, ConfirmarConviteExternoView,
++)
+ 
+ urlpatterns = [
+     path('me/', MinhaContaView.as_view(), name='me'),
+     path('monografias/', MinhasMonografiasView.as_view(), name='minhas-monografias'),
+-]
+\ No newline at end of file
++    path('rascunhos/', RascunhoAlunoViewSet.as_view({'get': 'list', 'post': 'create'}), name='meus-rascunhos'),
++    path('rascunhos/<int:pk>/', RascunhoAlunoViewSet.as_view({
++        'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy',
++    }), name='meu-rascunho-detalhe'),
++    path('convites/<int:pk>/emitir/', EmitirConviteExternoView.as_view(), name='emitir-convite-externo'),
++    path('convites/<int:pk>/confirmar/', ConfirmarConviteExternoView.as_view(), name='confirmar-convite-externo'),
++]
+diff --git a/usuarios/apps.py b/usuarios/apps.py
+index b3fa639..d91f9e6 100644
+--- a/usuarios/apps.py
++++ b/usuarios/apps.py
+@@ -3,3 +3,6 @@ from django.apps import AppConfig
+ 
+ class UsuariosConfig(AppConfig):
+     name = 'usuarios'
++
++    def ready(self):
++        from . import signals  # noqa: F401
+diff --git a/mnt/data/auth_audit/usuarios/convites.py b/usuarios/convites.py
+new file mode 100644
+index 0000000..c0f5419
+--- /dev/null
++++ b/usuarios/convites.py
+@@ -0,0 +1,29 @@
++"""Tokens escopados ao convite externo (hash persistido; segredo retornado uma vez)."""
++import hashlib
++import hmac
++import secrets
++from datetime import timedelta
++from django.utils import timezone
++
++
++def emitir_token(participacao):
++    token = secrets.token_urlsafe(32)
++    participacao.token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
++    # Renovar o token se a defesa for reagendada. Prazo finito, não permanente.
++    participacao.expira_em = min(
++        max(timezone.now() + timedelta(days=7), participacao.banca.fim + timedelta(days=2)),
++        timezone.now() + timedelta(days=90),
++    )
++    participacao.save(update_fields=['token_hash', 'expira_em'])
++    return token
++
++
++def validar_token(participacao, token):
++    if not isinstance(token, str) or len(token) > 512 or not token:
++        return False
++    if not participacao.token_hash or not participacao.expira_em:
++        return False
++    if participacao.expira_em <= timezone.now():
++        return False
++    digest = hashlib.sha256(token.encode('utf-8')).hexdigest()
++    return hmac.compare_digest(participacao.token_hash, digest)
+diff --git a/mnt/data/auth_audit/usuarios/signals.py b/usuarios/signals.py
+new file mode 100644
+index 0000000..27a9e88
+--- /dev/null
++++ b/usuarios/signals.py
+@@ -0,0 +1,19 @@
++"""Auditoria de autenticação sem persistir senha, sessão ou token."""
++from django.contrib.auth.signals import user_logged_in, user_logged_out
++from django.dispatch import receiver
++from monografias.models import HistoricoAcao
++
++
++@receiver(user_logged_in, dispatch_uid='monografias_login_audit')
++def registrar_login(sender, request, user, **kwargs):
++    HistoricoAcao.objects.create(
++        ator=user, objeto=f'Usuario:{user.pk}', acao='LOGIN', detalhes={}
++    )
++
++
++@receiver(user_logged_out, dispatch_uid='monografias_logout_audit')
++def registrar_logout(sender, request, user, **kwargs):
++    if user is not None:
++        HistoricoAcao.objects.create(
++            ator=user, objeto=f'Usuario:{user.pk}', acao='LOGOUT', detalhes={}
++        )
+diff --git a/mnt/data/auth_audit/usuarios/middleware.py b/usuarios/middleware.py
+new file mode 100644
+index 0000000..e119da9
+--- /dev/null
++++ b/usuarios/middleware.py
+@@ -0,0 +1,28 @@
++"""Barreira adicional de rede para rotas administrativas (não substitui as roles)."""
++import ipaddress
++from django.conf import settings
++from django.http import HttpResponseForbidden
++
++
++class RedeAdministrativaMiddleware:
++    PREFIXOS = ('/admin/', '/entrar/', '/equipe/', '/monografias/', '/api-auth/', '/api/')
++    EXCECOES = ('/api/usuarios/', '/api/publico/')
++
++    def __init__(self, get_response):
++        self.get_response = get_response
++
++    def __call__(self, request):
++        if getattr(settings, 'ADMIN_NETWORK_RESTRICTION_ENABLED', False):
++            path = request.path
++            protegido = any(path.startswith(prefixo) for prefixo in self.PREFIXOS)
++            excecao = any(path.startswith(prefixo) for prefixo in self.EXCECOES)
++            if protegido and not excecao:
++                redes = getattr(settings, 'ADMIN_ALLOWED_CIDRS', ())
++                try:
++                    ip = ipaddress.ip_address(request.META.get('REMOTE_ADDR', ''))
++                    permitido = any(ip in ipaddress.ip_network(cidr, strict=False) for cidr in redes)
++                except ValueError:
++                    permitido = False
++                if not permitido:
++                    return HttpResponseForbidden('Acesso administrativo restrito à rede institucional.')
++        return self.get_response(request)
+diff --git a/mnt/data/auth_audit/usuarios/tests_security.py b/usuarios/tests_security.py
+new file mode 100644
+index 0000000..e584d76
+--- /dev/null
++++ b/usuarios/tests_security.py
+@@ -0,0 +1,129 @@
++"""Testes adicionais de isolamento das contas e tokens externos."""
++from django.contrib.auth import get_user_model
++from django.contrib.auth.models import Group
++from django.test import TestCase, override_settings
++from django.utils import timezone
++from datetime import timedelta
++
++from equipe.models import Aluno, Curso, Professor
++from monografias.models import Banca, HistoricoAcao, MembroExterno, Monografia, ParticipacaoBanca
++from usuarios.roles import obter_papeis
++
++
++class SegurancaAcademicaTests(TestCase):
++    def setUp(self):
++        User = get_user_model()
++        self.aluno_user = User.objects.create_user(username='aluno_seg', password='SenhaSegura123!')
++        self.outro_user = User.objects.create_user(username='outro_seg', password='SenhaSegura123!')
++        self.prof_user = User.objects.create_user(username='prof_seg', password='SenhaSegura123!')
++        self.admin_user = User.objects.create_user(username='admin_seg', password='SenhaSegura123!', is_staff=True)
++        grupo_aluno = Group.objects.create(name='Alunos')
++        grupo_prof = Group.objects.create(name='Professores')
++        grupo_coord = Group.objects.create(name='Coordenadores')
++        self.aluno_user.groups.add(grupo_aluno)
++        self.outro_user.groups.add(grupo_aluno)
++        self.prof_user.groups.add(grupo_prof, grupo_coord)
++        self.prof = Professor.objects.create(usuario=self.prof_user, nome='Prof', email='prof@seg.example', departamento='Computação', area_pesquisa='Segurança')
++        self.curso = Curso.objects.create(nome='Sistemas', codigo='SIST', coordenador=self.prof)
++        self.aluno = Aluno.objects.create(usuario=self.aluno_user, nome='Aluno A', matricula='SM001', email='aluno@seg.example', curso=self.curso)
++        self.outro = Aluno.objects.create(usuario=self.outro_user, nome='Aluno B', matricula='SM002', email='outro@seg.example', curso=self.curso)
++        self.mono = Monografia.objects.create(titulo='Monografia A', resumo='Resumo', aluno=self.aluno, orientador=self.prof, curso=self.curso)
++
++    def test_papeis_exigem_grupo_e_vinculo(self):
++        self.assertEqual(obter_papeis(self.aluno_user), ['Aluno'])
++        self.assertIn('Coordenador', obter_papeis(self.prof_user))
++        User = get_user_model()
++        sem_vinculo = User.objects.create_user(username='semvinculo', password='SenhaSegura123!')
++        sem_vinculo.groups.add(Group.objects.get(name='Alunos'))
++        self.assertEqual(obter_papeis(sem_vinculo), [])
++
++    def test_usuario_sem_vinculo_nao_usa_api_academica(self):
++        User = get_user_model()
++        sem_vinculo = User.objects.create_user(username='semvinculo', password='SenhaSegura123!')
++        sem_vinculo.groups.add(Group.objects.get(name='Alunos'))
++        self.client.force_login(sem_vinculo)
++        response = self.client.get('/api/usuarios/monografias/')
++        self.assertEqual(response.status_code, 403)
++
++    def test_outro_aluno_nao_altera_tcc(self):
++        self.client.force_login(self.outro_user)
++        response = self.client.patch(
++            f'/api/usuarios/rascunhos/{self.mono.pk}/',
++            data='{"titulo":"Invasão"}', content_type='application/json',
++        )
++        self.assertEqual(response.status_code, 404)
++
++    def test_aluno_nao_forja_aluno_de_outro_no_post(self):
++        self.client.force_login(self.outro_user)
++        response = self.client.post(
++            '/api/usuarios/rascunhos/',
++            data='{"titulo":"Teste","resumo":"R","orientador":%d,"aluno":%d,"curso":%d}' % (self.prof.pk, self.aluno.pk, self.curso.pk),
++            content_type='application/json',
++        )
++        self.assertEqual(response.status_code, 400)
++        self.assertFalse(Monografia.objects.filter(titulo='Teste').exists())
++
++    def test_aluno_cria_rascunho_pertencente_a_si(self):
++        self.client.force_login(self.aluno_user)
++        response = self.client.post(
++            '/api/usuarios/rascunhos/',
++            data='{"titulo":"Meu TCC","resumo":"R","orientador":%d}' % self.prof.pk,
++            content_type='application/json',
++        )
++        self.assertEqual(response.status_code, 201, response.content)
++        self.assertEqual(Monografia.objects.get(titulo='Meu TCC').aluno_id, self.aluno.pk)
++
++    def test_crud_administrativo_permanece_restrito(self):
++        self.client.force_login(self.aluno_user)
++        self.assertEqual(self.client.get('/api/alunos/').status_code, 403)
++
++    def test_token_externo_expira_e_nao_e_reutilizado_para_confirmar(self):
++        Monografia.objects.filter(pk=self.mono.pk).update(status_fluxo='APROVADA_ORIENTADOR')
++        banca = Banca.objects.create(monografia=self.mono, inicio=timezone.now()+timedelta(days=5), fim=timezone.now()+timedelta(days=5, hours=1), local='Sala 1')
++        externo = MembroExterno.objects.create(nome='Externo', email='ext@seg.example', instituicao='Outra')
++        participacao = ParticipacaoBanca.objects.create(banca=banca, membro_externo=externo)
++        self.client.force_login(self.admin_user)
++        resposta = self.client.post(f'/api/usuarios/convites/{participacao.pk}/emitir/')
++        self.assertEqual(resposta.status_code, 200, resposta.content)
++        token = resposta.json()['token']
++        self.assertNotEqual(token, ParticipacaoBanca.objects.get(pk=participacao.pk).token_hash)
++        self.client.logout()
++        url = f'/api/usuarios/convites/{participacao.pk}/confirmar/'
++        self.assertEqual(self.client.post(url, {'token': 'falso'}).status_code, 403)
++        ParticipacaoBanca.objects.filter(pk=participacao.pk).update(
++            expira_em=timezone.now() - timedelta(seconds=1)
++        )
++        self.assertEqual(self.client.post(url, {'token': token}).status_code, 403)
++        ParticipacaoBanca.objects.filter(pk=participacao.pk).update(
++            expira_em=timezone.now() + timedelta(days=2)
++        )
++        self.assertEqual(self.client.post(url, {'token': token}).status_code, 200)
++        self.assertEqual(self.client.post(url, {'token': token}).status_code, 403)
++        self.assertTrue(HistoricoAcao.objects.filter(acao='CONVITE_EXTERNO_CONFIRMADO').exists())
++
++    @override_settings(ADMIN_NETWORK_RESTRICTION_ENABLED=True, ADMIN_ALLOWED_CIDRS=['10.0.0.0/8'])
++    def test_admin_rede_institucional(self):
++        self.client.force_login(self.admin_user)
++        self.assertEqual(self.client.get('/api/alunos/', REMOTE_ADDR='192.168.0.25').status_code, 403)
++        self.assertEqual(self.client.get('/api/alunos/', REMOTE_ADDR='10.2.3.4').status_code, 200)
++        self.assertEqual(self.client.get('/api/usuarios/me/', REMOTE_ADDR='192.168.0.25').status_code, 200)
++
++    def test_crud_admin_registra_auditoria(self):
++        self.client.force_login(self.admin_user)
++        response = self.client.post(
++            '/api/cursos/', data='{"nome":"Novo Curso","codigo":"NOVO"}',
++            content_type='application/json',
++        )
++        self.assertEqual(response.status_code, 201, response.content)
++        self.assertTrue(HistoricoAcao.objects.filter(ator=self.admin_user, acao='CRUD_CRIACAO').exists())
++
++    def test_rascunho_nao_pode_ser_excluido_depois_de_aprovado(self):
++        self.client.force_login(self.aluno_user)
++        Monografia.objects.filter(pk=self.mono.pk).update(status_fluxo='APROVADA_ORIENTADOR')
++        response = self.client.delete(f'/api/usuarios/rascunhos/{self.mono.pk}/')
++        self.assertEqual(response.status_code, 409)
++        self.assertTrue(Monografia.objects.filter(pk=self.mono.pk).exists())
++
++    def test_login_registrado_no_historico(self):
++        self.client.force_login(self.aluno_user)
++        self.assertTrue(HistoricoAcao.objects.filter(ator=self.aluno_user, acao='LOGIN').exists())
+diff --git a/mnt/data/auth_audit/usuarios/auditoria.py b/usuarios/auditoria.py
+new file mode 100644
+index 0000000..cf2389a
+--- /dev/null
++++ b/usuarios/auditoria.py
+@@ -0,0 +1,12 @@
++"""Utilitário compartilhado para auditoria dos CRUDs, sem registrar credenciais."""
++from monografias.models import HistoricoAcao
++
++
++def registrar_acao(ator, objeto, acao):
++    referencia = f'{objeto._meta.label}:{objeto.pk}'
++    HistoricoAcao.objects.create(
++        ator=ator if getattr(ator, 'is_authenticated', False) else None,
++        objeto=referencia,
++        acao=acao,
++        detalhes={'modelo': objeto._meta.label, 'id': objeto.pk},
++    )
+diff --git a/mnt/data/auth_audit/usuarios/management/__init__.py b/usuarios/management/__init__.py
+new file mode 100644
+index 0000000..5cff49f
+--- /dev/null
++++ b/usuarios/management/__init__.py
+@@ -0,0 +1 @@
++# Comandos administrativos do app usuarios.
+diff --git a/mnt/data/auth_audit/usuarios/management/commands/__init__.py b/usuarios/management/commands/__init__.py
+new file mode 100644
+index 0000000..4a11d38
+--- /dev/null
++++ b/usuarios/management/commands/__init__.py
+@@ -0,0 +1 @@
++# Comandos executáveis via manage.py.
+diff --git a/mnt/data/auth_audit/usuarios/management/commands/configurar_grupos.py b/usuarios/management/commands/configurar_grupos.py
+new file mode 100644
+index 0000000..bededa4
+--- /dev/null
++++ b/usuarios/management/commands/configurar_grupos.py
+@@ -0,0 +1,12 @@
++"""Cria grupos acadêmicos de maneira idempotente. Não atribui privilégios automaticamente."""
++from django.contrib.auth.models import Group
++from django.core.management.base import BaseCommand
++
++
++class Command(BaseCommand):
++    help = 'Cria os grupos Alunos, Professores e Coordenadores.'
++
++    def handle(self, *args, **options):
++        for nome in ('Alunos', 'Professores', 'Coordenadores'):
++            _, criado = Group.objects.get_or_create(name=nome)
++            self.stdout.write(f'{nome}: {"criado" if criado else "já existia"}')
+diff --git a/mnt/data/auth_audit/.env.example b/.env.example
+new file mode 100644
+index 0000000..0de4739
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,14 @@
++# Copie para .env e preencha os valores locais (não envie .env ao Git).
++DJANGO_DEBUG=1
++DJANGO_SECRET_KEY=SUBSTITUA_POR_CHAVE_ALEATORIA_GERADA_NO_SEU_COMPUTADOR
++DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
++POSTGRES_PASSWORD=SUBSTITUA_PELA_SENHA_DO_BANCO_LOCAL_EXISTENTE
++
++# Ative em produção e defina exclusivamente os CIDRs reais da instituição/VPN.
++ADMIN_NETWORK_RESTRICTION_ENABLED=0
++ADMIN_ALLOWED_CIDRS=127.0.0.1/32,::1/128
++# Quando HTTPS estiver corretamente configurado:
++# DJANGO_DEBUG=0
++# DJANGO_ALLOWED_HOSTS=seu-dominio.example
++# ADMIN_NETWORK_RESTRICTION_ENABLED=1
++# ADMIN_ALLOWED_CIDRS=10.1.0.0/16
+diff --git a/mnt/data/auth_audit/scripts/proteger_settings.py b/scripts/proteger_settings.py
+new file mode 100644
+index 0000000..4df653c
+--- /dev/null
++++ b/scripts/proteger_settings.py
+@@ -0,0 +1,30 @@
++"""Migra settings legados para env sem copiar segredos existentes para o patch.
++
++ATENÇÃO: crie .env com a senha ORIGINAL do banco antes de executar.
++Execute uma vez na raiz: python scripts/proteger_settings.py
++"""
++from pathlib import Path
++import re
++
++base = Path(__file__).resolve().parent.parent
++p = base / 'Curso_Django' / 'settings.py'
++s = p.read_text(encoding='utf-8')
++if 'load_dotenv(BASE_DIR / ".env")' in s:
++    raise SystemExit('Configuração já adaptada. Não é necessário executar novamente.')
++if not re.search(r'(?m)^SECRET_KEY\s*=', s):
++    raise SystemExit('Chave não encontrada. Não foi alterado.')
++if not re.search(r"(?m)^\s*'PASSWORD'\s*:", s):
++    raise SystemExit('Senha do banco não encontrada. Não foi alterado.')
++if "MIDDLEWARE = [" not in s:
++    raise SystemExit('Middleware não encontrado. Não foi alterado.')
++
++s = s.replace('from pathlib import Path', 'from pathlib import Path\nimport os\nfrom dotenv import load_dotenv', 1)
++s = s.replace("BASE_DIR = Path(__file__).resolve().parent.parent", 'BASE_DIR = Path(__file__).resolve().parent.parent\nload_dotenv(BASE_DIR / ".env")', 1)
++s = re.sub(r'(?m)^SECRET_KEY\s*=.*$', 'SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]', s, count=1)
++s = re.sub(r'(?m)^DEBUG\s*=.*$', 'DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"', s, count=1)
++s = re.sub(r'(?m)^ALLOWED_HOSTS\s*=.*$', 'ALLOWED_HOSTS = [x.strip() for x in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if x.strip()]', s, count=1)
++s = re.sub(r"(?m)^(\s*'PASSWORD'\s*:)\s*.*$", r'\1 os.environ["POSTGRES_PASSWORD"],', s, count=1)
++s = s.replace("'allauth.account.middleware.AccountMiddleware',", "'allauth.account.middleware.AccountMiddleware',\n    'usuarios.middleware.RedeAdministrativaMiddleware',", 1)
++s += """\n# Camada adicional de segurança. Reverse proxy deve impor HTTPS no ambiente real.\nSECURE_SSL_REDIRECT = not DEBUG\nSESSION_COOKIE_SECURE = not DEBUG\nCSRF_COOKIE_SECURE = not DEBUG\nSESSION_COOKIE_HTTPONLY = True\nSESSION_COOKIE_SAMESITE = 'Lax'\nCSRF_COOKIE_SAMESITE = 'Lax'\nSECURE_HSTS_SECONDS = 3600 if not DEBUG else 0\nSECURE_HSTS_INCLUDE_SUBDOMAINS = False\nSECURE_HSTS_PRELOAD = False\nSECURE_CONTENT_TYPE_NOSNIFF = True\nX_FRAME_OPTIONS = 'DENY'\nADMIN_NETWORK_RESTRICTION_ENABLED = os.environ.get(\n    'ADMIN_NETWORK_RESTRICTION_ENABLED', '0' if DEBUG else '1'\n) == '1'\nADMIN_ALLOWED_CIDRS = tuple(x.strip() for x in os.environ.get('ADMIN_ALLOWED_CIDRS', '').split(',') if x.strip())\n"""
++p.write_text(s, encoding='utf-8')
++print('settings.py convertido. Verifique o diff e não faça commit do arquivo .env.')
+diff --git a/requirements.txt b/requirements.txt
+index 77e239e..a04c1ec 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -3,3 +3,5 @@ Django==6.0.4
+ djangorestframework==3.18.3
+ psycopg2-binary==2.9.13
+ sqlparse==0.5.5
++django-allauth==65.22.1
++python-dotenv>=1.0,<2
+diff --git a/Curso_Django/api.py b/Curso_Django/api.py
+index aa6a3b4..7db2ce8 100644
+--- a/Curso_Django/api.py
++++ b/Curso_Django/api.py
+@@ -7,6 +7,7 @@ from rest_framework import serializers, viewsets
+ from rest_framework.exceptions import APIException
+ 
+ from .services import OperacaoNaoPermitida, ServicoCRUD
++from usuarios.auditoria import registrar_acao
+ 
+ 
+ class Conflito(APIException):
+@@ -50,10 +51,14 @@ class ModelSerializerValidado(serializers.ModelSerializer):
+ 
+ class CRUDViewSet(viewsets.ModelViewSet):
+     def perform_create(self, serializer):
+-        self.salvar(serializer)
++        with transaction.atomic():
++            self.salvar(serializer)
++            registrar_acao(self.request.user, serializer.instance, 'CRUD_CRIACAO')
+ 
+     def perform_update(self, serializer):
+-        self.salvar(serializer)
++        with transaction.atomic():
++            self.salvar(serializer)
++            registrar_acao(self.request.user, serializer.instance, 'CRUD_ATUALIZACAO')
+ 
+     def salvar(self, serializer):
+         try:
+@@ -70,6 +75,7 @@ class CRUDViewSet(viewsets.ModelViewSet):
+         try:
+             with transaction.atomic():
+                 self.serializer_class.service_class.excluir(instance)
++                registrar_acao(self.request.user, instance, 'CRUD_EXCLUSAO')
+         except ProtectedError as exc:
+             raise Conflito('Este registro está em uso e não pode ser excluído.') from exc
+         except OperacaoNaoPermitida as exc:
+diff --git a/Curso_Django/interface.py b/Curso_Django/interface.py
+index dc4e630..bd9fe73 100644
+--- a/Curso_Django/interface.py
++++ b/Curso_Django/interface.py
+@@ -3,13 +3,14 @@ from datetime import datetime
+ from django import forms
+ from django.contrib import messages
+ from django.core.exceptions import ValidationError
+-from django.db import IntegrityError
++from django.db import IntegrityError, transaction
+ from django.db.models.deletion import ProtectedError
+ from django.shortcuts import get_object_or_404, redirect, render
+ from django.urls import reverse
+ from django.utils import timezone
+ 
+ from .services import OperacaoNaoPermitida
++from usuarios.auditoria import registrar_acao
+ 
+ 
+ def url_objeto(url, pk):
+@@ -79,10 +80,13 @@ def formulario(request, config, pk=None, template='crud/formulario.html'):
+         if instance:
+             service.validar_alteracao(instance)
+         if request.method == 'POST' and form.is_valid():
+-            if instance:
+-                instance = service.atualizar(instance, form.cleaned_data)
+-            else:
+-                instance = service.criar(form._meta.model, form.cleaned_data)
++            alterando = instance is not None
++            with transaction.atomic():
++                if alterando:
++                    instance = service.atualizar(instance, form.cleaned_data)
++                else:
++                    instance = service.criar(form._meta.model, form.cleaned_data)
++                registrar_acao(request.user, instance, 'CRUD_ATUALIZACAO' if alterando else 'CRUD_CRIACAO')
+             messages.success(request, 'Cadastro salvo com sucesso.')
+             return redirect(url_objeto(config['detalhes_url'], instance.pk))
+     except OperacaoNaoPermitida as exc:
+@@ -123,7 +127,9 @@ def excluir(request, config, pk, template='crud/excluir.html'):
+     try:
+         config['serializer'].service_class.validar_alteracao(instance)
+         if request.method == 'POST':
+-            config['serializer'].service_class.excluir(instance)
++            with transaction.atomic():
++                config['serializer'].service_class.excluir(instance)
++                registrar_acao(request.user, instance, 'CRUD_EXCLUSAO')
+             messages.success(request, 'Cadastro excluído com sucesso.')
+             return redirect(config['lista_url'])
+     except OperacaoNaoPermitida as exc:

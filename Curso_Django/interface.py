@@ -3,13 +3,14 @@ from datetime import datetime
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
 from .services import OperacaoNaoPermitida
+from usuarios.auditoria import registrar_acao
 
 
 def url_objeto(url, pk):
@@ -79,10 +80,13 @@ def formulario(request, config, pk=None, template='crud/formulario.html'):
         if instance:
             service.validar_alteracao(instance)
         if request.method == 'POST' and form.is_valid():
-            if instance:
-                instance = service.atualizar(instance, form.cleaned_data)
-            else:
-                instance = service.criar(form._meta.model, form.cleaned_data)
+            alterando = instance is not None
+            with transaction.atomic():
+                if alterando:
+                    instance = service.atualizar(instance, form.cleaned_data)
+                else:
+                    instance = service.criar(form._meta.model, form.cleaned_data)
+                registrar_acao(request.user, instance, 'CRUD_ATUALIZACAO' if alterando else 'CRUD_CRIACAO')
             messages.success(request, 'Cadastro salvo com sucesso.')
             return redirect(url_objeto(config['detalhes_url'], instance.pk))
     except OperacaoNaoPermitida as exc:
@@ -123,7 +127,9 @@ def excluir(request, config, pk, template='crud/excluir.html'):
     try:
         config['serializer'].service_class.validar_alteracao(instance)
         if request.method == 'POST':
-            config['serializer'].service_class.excluir(instance)
+            with transaction.atomic():
+                config['serializer'].service_class.excluir(instance)
+                registrar_acao(request.user, instance, 'CRUD_EXCLUSAO')
             messages.success(request, 'Cadastro excluído com sucesso.')
             return redirect(config['lista_url'])
     except OperacaoNaoPermitida as exc:
