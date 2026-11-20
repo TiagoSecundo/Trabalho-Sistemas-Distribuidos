@@ -41,6 +41,9 @@ INSTALLED_APPS = [
     'home', 
     'equipe',
     'monografias',
+    'allauth',
+    'allauth.account',
+    'usuarios.apps.UsuariosConfig',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +52,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -125,7 +129,7 @@ STATIC_URL = 'static/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_URL = '/entrar/'
-LOGIN_REDIRECT_URL = '/monografias/'
+# LOGIN_REDIRECT_URL = '/monografias/'
 LOGOUT_REDIRECT_URL = '/'
 
 REST_FRAMEWORK = {
@@ -144,3 +148,29 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
 }
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/usuarios/painel/'
+LOGOUT_REDIRECT_URL = '/'
+
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+
+ACCOUNT_SIGNUP_FIELDS = [
+    'username*',
+    'email*',
+    'password1*',
+    'password2*',
+]
+
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+
+# Apenas durante o desenvolvimento
+EMAIL_BACKEND = (
+    'django.core.mail.backends.console.EmailBackend'
+)

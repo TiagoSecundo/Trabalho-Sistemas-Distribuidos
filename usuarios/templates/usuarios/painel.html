@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Usuário</title>
+</head>
+<body>
+    <h1>Painel do Usuário</h1>
+
+    <p>Bem-vindo, {{ usuario.username }}!</p>
+
+    <h2>Seus perfis:</h2>
+
+    {% for papel in papeis %}
+        <p>{{ papel }}</p>
+    {% empty %}
+        <p>Nenhum perfil encontrado.</p>
+    {% endfor %}
+</body>
+</html>
