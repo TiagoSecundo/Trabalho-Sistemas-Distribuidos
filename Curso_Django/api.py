@@ -7,6 +7,7 @@ from rest_framework import serializers, viewsets
 from rest_framework.exceptions import APIException
 
 from .services import OperacaoNaoPermitida, ServicoCRUD
+from usuarios.auditoria import registrar_acao
 
 
 class Conflito(APIException):
@@ -50,10 +51,14 @@ class ModelSerializerValidado(serializers.ModelSerializer):
 
 class CRUDViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
-        self.salvar(serializer)
+        with transaction.atomic():
+            self.salvar(serializer)
+            registrar_acao(self.request.user, serializer.instance, 'CRUD_CRIACAO')
 
     def perform_update(self, serializer):
-        self.salvar(serializer)
+        with transaction.atomic():
+            self.salvar(serializer)
+            registrar_acao(self.request.user, serializer.instance, 'CRUD_ATUALIZACAO')
 
     def salvar(self, serializer):
         try:
@@ -70,6 +75,7 @@ class CRUDViewSet(viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 self.serializer_class.service_class.excluir(instance)
+                registrar_acao(self.request.user, instance, 'CRUD_EXCLUSAO')
         except ProtectedError as exc:
             raise Conflito('Este registro está em uso e não pode ser excluído.') from exc
         except OperacaoNaoPermitida as exc:
