@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'usuarios/painel.css' %}">{% endblock %}
+{% block title %}Meu painel · AllTeam{% endblock %}
+{% block content %}
+<section class="container perfil-page">
+    {% if perfis %}
+    <nav class="perfil-nav" aria-label="Seus perfis">
+        {% for item in perfis %}<a href="{{ item.url }}" {% if item.slug == perfil.slug %}aria-current="page"{% endif %}>{{ item.papel }}</a>{% endfor %}
+    </nav>
+    {% endif %}
+    {% block perfil_content %}{% endblock %}
+</section>
+{% endblock %}

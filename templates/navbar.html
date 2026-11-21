@@ -10,14 +10,17 @@
     <div class="collapse navbar-collapse" id="mainNavbar">
       <ul class="navbar-nav ml-auto align-items-lg-center">
         <li class="nav-item"><a class="nav-link app-link" href="{% url 'index' %}" {% if request.path == '/' %}aria-current="page"{% endif %}>Início</a></li>
-        {% if user.is_authenticated and user.is_staff %}
+        {% if user.is_authenticated %}
+        <li class="nav-item"><a class="nav-link app-link" href="{% url 'usuarios:painel' %}" {% if request.resolver_match.namespace == 'usuarios' %}aria-current="page"{% endif %}>Meu painel</a></li>
+        {% if user.is_staff %}
         <li class="nav-item"><a class="nav-link app-link" href="{% url 'equipe:index' %}" {% if request.resolver_match.namespace == 'equipe' %}aria-current="page"{% endif %}>Cadastros</a></li>
         <li class="nav-item"><a class="nav-link app-link" href="{% url 'monografias:index' %}" {% if request.resolver_match.namespace == 'monografias' %}aria-current="page"{% endif %}>Monografias e bancas</a></li>
+        {% endif %}
         <li class="nav-item ml-lg-3">
           <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="btn btn-outline-light btn-sm">Sair</button></form>
         </li>
         {% else %}
-        <li class="nav-item ml-lg-2"><a class="btn app-cta-btn" href="{% url 'login' %}">Entrar</a></li>
+        <li class="nav-item ml-lg-2"><a class="btn app-cta-btn" href="{% url 'account_login' %}">Entrar</a></li>
         {% endif %}
       </ul>
     </div>

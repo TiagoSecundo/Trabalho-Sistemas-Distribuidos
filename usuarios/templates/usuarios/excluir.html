@@ -1,0 +1,5 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Excluir rascunho · AllTeam{% endblock %}
+{% block perfil_content %}<div class="crud-form-shell perfil-section"><h1>Excluir rascunho</h1>
+{% if erro %}<div class="alert alert-warning" role="alert">{{ erro }}</div>{% else %}<p>Confirma a exclusão de <strong>{{ monografia.titulo }}</strong>?</p><p class="perfil-caption">Esta ação remove o rascunho. Trabalhos com bancas vinculadas são protegidos.</p><form method="post" data-crud-delete>{% csrf_token %}{% include 'crud/feedback.html' %}<button type="submit" class="btn btn-danger">Confirmar exclusão</button></form>{% endif %}
+<a class="back-link mt-3" href="{% url 'usuarios:trabalho' monografia.pk %}">Cancelar e voltar</a></div>{{ api_config|json_script:'crud-config' }}{% endblock %}
