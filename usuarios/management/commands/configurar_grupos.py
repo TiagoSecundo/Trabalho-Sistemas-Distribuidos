@@ -4,9 +4,9 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = 'Cria os grupos Alunos, Professores e Coordenadores.'
+    help = 'Cria grupos acadêmicos e Administradores, sem atribuir usuários ou permissões.'
 
     def handle(self, *args, **options):
-        for nome in ('Alunos', 'Professores', 'Coordenadores'):
+        for nome in ('Alunos', 'Professores', 'Coordenadores', 'Administradores'):
             _, criado = Group.objects.get_or_create(name=nome)
             self.stdout.write(f'{nome}: {"criado" if criado else "já existia"}')

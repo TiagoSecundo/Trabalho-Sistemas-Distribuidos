@@ -8,7 +8,7 @@ from equipe.models import Aluno
 from monografias.models import HistoricoAcao, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .convites import emitir_token, validar_token
-from .roles import obter_papeis
+from .roles import obter_papeis, pode_convidar_para_banca
 
 
 def exigir_aluno(usuario):
@@ -60,16 +60,11 @@ def excluir_rascunho(usuario, instance):
 def emitir_convite_externo(usuario, pk):
     participacao = get_object_or_404(
         ParticipacaoBanca.objects.select_for_update(of=('self',)).select_related(
-            'banca__monografia__curso__coordenador', 'membro_externo',
+            'banca__monografia__curso__coordenador', 'banca__monografia__orientador', 'membro_externo',
         ), pk=pk,
     )
-    coordenador = participacao.banca.monografia.curso.coordenador
-    autorizado = usuario.is_active and (usuario.is_staff or (
-        'Coordenador' in obter_papeis(usuario)
-        and coordenador is not None and coordenador.usuario_id == usuario.pk
-    ))
-    if not autorizado:
-        raise PermissionDenied('Apenas a coordenação deste curso ou administração pode emitir o convite.')
+    if not pode_convidar_para_banca(usuario, participacao.banca.monografia):
+        raise PermissionDenied('Apenas o orientador, a coordenação deste curso ou a administração pode emitir o convite.')
     if participacao.membro_externo_id is None:
         raise ValidationError({'participacao': 'Esta participação não é de membro externo.'})
     if participacao.banca.monografia.status_fluxo not in ('APROVADA_ORIENTADOR', 'BANCA_AGENDADA'):

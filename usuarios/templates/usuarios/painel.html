@@ -24,7 +24,7 @@
     <a href="{% url 'equipe:index' %}?tipo=aluno"><strong>{{ cadastros.alunos }} alunos</strong><span>Consultar cadastros →</span></a>
     <a href="{% url 'equipe:index' %}?tipo=professor"><strong>{{ cadastros.professores }} professores</strong><span>Consultar cadastros →</span></a>
     <a href="{% url 'equipe:index' %}?tipo=curso"><strong>{{ cadastros.cursos }} cursos</strong><span>Consultar cadastros →</span></a>
-    {% if perms.auth.view_user or perms.auth.change_user %}<a href="{% url 'admin:auth_user_changelist' %}"><strong>Contas e acessos</strong><span>Administrar usuários →</span></a>{% endif %}
+    {% if user.is_staff %}{% if perms.auth.view_user or perms.auth.change_user %}<a href="{% url 'admin:auth_user_changelist' %}"><strong>Contas e acessos</strong><span>Administrar usuários →</span></a>{% endif %}{% endif %}
 </section>
 {% endif %}
 <div class="perfil-columns">
@@ -33,8 +33,9 @@
     <form method="get" class="perfil-search" role="search">
         <div><label for="busca-perfil">Buscar trabalho</label><input id="busca-perfil" type="search" name="q" value="{{ busca }}" placeholder="Título, aluno ou curso"></div>
         <div><label for="estado-perfil">Situação</label><select id="estado-perfil" name="estado"><option value="">Todas as situações</option>{% for valor, rotulo in estados %}<option value="{{ valor }}" {% if valor == estado %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
+        {% if perfil.slug == 'professor' %}<div><label for="vinculo-perfil">Meu vínculo</label><select id="vinculo-perfil" name="vinculo"><option value="">Todos os vínculos</option value="orientacoes" {% if vinculo == 'orientacoes' %}selected{% endif %}>Orientações e coorientações</option><option value="bancas" {% if vinculo == 'bancas' %}selected{% endif %}>Participações em bancas</option></select></div>{% endif %}
         <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
-        {% if busca or estado %}<a href="{{ perfil.url }}">Limpar</a>{% endif %}
+        {% if busca or estado or vinculo %}<a href="{{ perfil.url }}">Limpar</a>{% endif %}
     </form>
     <div class="perfil-work-list">
         {% for trabalho in pagina %}
@@ -54,17 +55,22 @@
     </div>
     {% if pagina.has_other_pages %}
     <nav class="perfil-pagination" aria-label="Páginas de trabalhos">
-        {% if pagina.has_previous %}<a href="?q={{ busca|urlencode }}&amp;estado={{ estado|urlencode }}&amp;page={{ pagina.previous_page_number }}">← Anterior</a>{% endif %}
+        {% if pagina.has_previous %}<a href="?q={{ busca|urlencode }}&amp;estado={{ estado|urlencode }}&amp;vinculo={{ vinculo|urlencode }}&amp;page={{ pagina.previous_page_number }}">← Anterior</a>{% endif %}
         <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-        {% if pagina.has_next %}<a href="?q={{ busca|urlencode }}&amp;estado={{ estado|urlencode }}&amp;page={{ pagina.next_page_number }}">Próxima →</a>{% endif %}
+        {% if pagina.has_next %}<a href="?q={{ busca|urlencode }}&amp;estado={{ estado|urlencode }}&amp;vinculo={{ vinculo|urlencode }}&amp;page={{ pagina.next_page_number }}">Próxima →</a>{% endif %}
     </nav>
     {% endif %}
 </section>
 <aside class="perfil-aside">
+    {% if perfil.slug == 'professor' %}
+    <section class="perfil-section" aria-labelledby="minhas-participacoes"><h2 id="minhas-participacoes">Minhas participações</h2><p class="perfil-caption">Suas cinco participações mais recentes em bancas não canceladas.</p>
+    {% for participacao in participacoes %}<article class="perfil-agenda"><h3>{{ participacao.banca.monografia.titulo }}</h3><p>{{ participacao.get_papel_display }} · {{ participacao.get_convite_status_display }}</p><time datetime="{{ participacao.banca.inicio|date:'c' }}">{{ participacao.banca.inicio|date:'d/m/Y · H:i' }}</time><a href="{% url 'usuarios:trabalho' participacao.banca.monografia_id %}?perfil=professor">Consultar participação →</a></article>{% empty %}<p class="perfil-caption">Você ainda não participa de uma banca.</p>{% endfor %}
+    </section>
+    {% endif %}
     <section class="perfil-section"><h2>Próximas bancas</h2><p class="perfil-caption">Até cinco bancas dos trabalhos deste perfil.</p>
     {% for banca in proximas_bancas %}<article class="perfil-agenda"><time datetime="{{ banca.inicio|date:'c' }}">{{ banca.inicio|date:'d/m/Y · H:i' }}</time><h3>{{ banca.monografia.titulo }}</h3><p>{{ banca.get_modalidade_display }}{% if banca.local %} · {{ banca.local }}{% endif %}</p><a href="{% url 'usuarios:trabalho' banca.monografia_id %}?perfil={{ perfil.slug }}">Consultar banca →</a></article>{% empty %}<p class="perfil-caption">Não há bancas agendadas neste momento.</p>{% endfor %}
     </section>
-    <section class="perfil-note"><h2>Seu acesso</h2><p>{% if perfil.slug == 'aluno' %}Você pode criar, editar e excluir seus rascunhos. Acompanhe aqui a situação de cada trabalho.{% elif perfil.slug == 'professor' %}Esta área reúne suas orientações e coorientações, com a situação de cada trabalho e suas bancas.{% elif perfil.slug == 'coordenador' %}Consulte os trabalhos dos cursos que coordena. Nos detalhes da banca, você pode emitir convites para membros externos quando a orientação estiver aprovada.{% else %}Use os cadastros para gerenciar alunos, professores e cursos. As monografias, bancas e avaliações continuam disponíveis na área de gestão.{% endif %}</p>
+    <section class="perfil-note"><h2>Seu acesso</h2><p>{% if perfil.slug == 'aluno' %}Você pode criar, editar e excluir seus rascunhos. Acompanhe aqui a situação de cada trabalho.{% elif perfil.slug == 'professor' %}Consulte suas orientações, coorientações e trabalhos em que participa da banca. Como orientador principal, você também pode emitir convites externos depois da aprovação da orientação.{% elif perfil.slug == 'coordenador' %}Consulte os trabalhos dos cursos que coordena. Nos detalhes da banca, você pode emitir convites para membros externos quando a orientação estiver aprovada.{% else %}Use os cadastros para gerenciar alunos, professores e cursos. Vincule a conta de acesso ao aluno ou professor para liberar seu painel. As monografias, bancas e avaliações continuam disponíveis na área de gestão.{% endif %}</p>
     {% if perfil.slug == 'administrador' %}<a href="{% url 'monografias:index' %}">Monografias e bancas →</a>{% endif %}
     <p class="perfil-caption">Submissão, aprovação e fechamento de resultados ainda não estão disponíveis nesta aplicação.</p></section>
 </aside>

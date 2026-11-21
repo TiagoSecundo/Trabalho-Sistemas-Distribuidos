@@ -113,14 +113,13 @@
             dos avaliadores em uma área de gestão integrada.
         </p>
         <div class="home-cta">
-            {% if user.is_authenticated and user.is_staff %}
+            {% if user.is_authenticated and acesso_administrativo %}
             <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'monografias:index' %}">Gerenciar monografias</a>
             <a class="btn btn-outline-secondary mb-2" href="{% url 'monografias:adicionar' %}">Adicionar monografia</a>
             {% elif user.is_authenticated %}
             <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'usuarios:painel' %}">Acessar meu painel</a>
             {% else %}
             <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'account_login' %}">Entrar no meu painel</a>
-            <a class="btn btn-outline-secondary mb-2" href="{% url 'login' %}">Acesso administrativo</a>
             {% endif %}
         </div>
 
@@ -131,7 +130,7 @@
                     <div class="card-body">
                         <h3>Cadastros acadêmicos</h3>
                         <p>Alunos, professores e cursos conectados aos trabalhos e às orientações.</p>
-                        {% if user.is_staff %}<a href="{% url 'equipe:index' %}" class="d-inline-block mt-3">Acessar cadastros →</a>{% endif %}
+                        {% if acesso_administrativo %}<a href="{% url 'equipe:index' %}" class="d-inline-block mt-3">Acessar cadastros →</a>{% endif %}
                     </div>
                 </article>
             </div>
@@ -140,7 +139,7 @@
                     <div class="card-body">
                         <h3>Monografias</h3>
                         <p>Títulos, resumos, palavras-chave e vínculos acadêmicos de cada trabalho.</p>
-                        {% if user.is_staff %}<a href="{% url 'monografias:index' %}" class="d-inline-block mt-3">Consultar trabalhos →</a>{% endif %}
+                        {% if acesso_administrativo %}<a href="{% url 'monografias:index' %}" class="d-inline-block mt-3">Consultar trabalhos →</a>{% endif %}
                     </div>
                 </article>
             </div>
@@ -149,7 +148,7 @@
                     <div class="card-body">
                         <h3>Bancas e avaliações</h3>
                         <p>Horários, participantes internos e externos, notas e pareceres reunidos por trabalho.</p>
-                        {% if user.is_staff %}<a href="{% url 'monografias:recurso-lista' 'bancas' %}" class="d-inline-block mt-3">Organizar bancas →</a>{% endif %}
+                        {% if acesso_administrativo %}<a href="{% url 'monografias:recurso-lista' 'bancas' %}" class="d-inline-block mt-3">Organizar bancas →</a>{% endif %}
                     </div>
                 </article>
             </div>

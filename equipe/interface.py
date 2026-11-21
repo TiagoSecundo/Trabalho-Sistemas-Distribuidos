@@ -9,16 +9,17 @@ from .serializers import AlunoSerializer, CursoSerializer, ProfessorSerializer
 RECURSOS = {
     'aluno': {
         'titulo': 'Alunos', 'singular': 'aluno', 'form': AlunoForm,
-        'serializer': AlunoSerializer, 'queryset': Aluno.objects.select_related('curso', 'orientador_atual'),
+        'serializer': AlunoSerializer, 'queryset': Aluno.objects.select_related('usuario', 'curso', 'orientador_atual'),
         'api': 'aluno', 'descricao': 'Cadastre os autores e vincule cada aluno ao seu curso.',
         'colunas': [('nome', 'Nome'), ('matricula', 'Matrícula'), ('curso_nome', 'Curso'), ('email', 'E-mail')],
-        'campos': [('nome', 'Nome'), ('matricula', 'Matrícula'), ('email', 'E-mail'), ('curso_nome', 'Curso'), ('orientador_nome', 'Orientador atual')],
+        'campos': [('nome', 'Nome'), ('usuario_nome', 'Conta de acesso'), ('matricula', 'Matrícula'), ('email', 'E-mail'), ('curso_nome', 'Curso'), ('orientador_nome', 'Orientador atual')],
     },
     'professor': {
         'titulo': 'Professores', 'singular': 'professor', 'form': ProfessorForm,
-        'serializer': ProfessorSerializer, 'queryset': Professor.objects.all(),
+        'serializer': ProfessorSerializer, 'queryset': Professor.objects.select_related('usuario'),
         'api': 'professor', 'descricao': 'Organize orientadores, coordenadores e avaliadores internos.',
         'colunas': [('nome', 'Nome'), ('email', 'E-mail'), ('departamento', 'Departamento'), ('area_pesquisa', 'Área de pesquisa')],
+        'campos': [('nome', 'Nome'), ('usuario_nome', 'Conta de acesso'), ('email', 'E-mail'), ('departamento', 'Departamento'), ('area_pesquisa', 'Área de pesquisa')],
     },
     'curso': {
         'titulo': 'Cursos', 'singular': 'curso', 'form': CursoForm,

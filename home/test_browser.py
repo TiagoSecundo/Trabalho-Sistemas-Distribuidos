@@ -19,7 +19,7 @@ class NavegadorTests(StaticLiveServerTestCase):
     def setUp(self):
         from playwright.sync_api import sync_playwright
 
-        get_user_model().objects.create_user('gestor-browser', password='senha-de-teste-browser', is_staff=True)
+        get_user_model().objects.create_user('gestor-browser', password='senha-de-teste-browser', is_staff=True, is_superuser=True)
         Professor.objects.bulk_create([
             Professor(nome=f'Professor de apoio {i:02}', email=f'apoio{i}@example.com', departamento='Computação', area_pesquisa='Redes')
             for i in range(22)
@@ -39,10 +39,10 @@ class NavegadorTests(StaticLiveServerTestCase):
 
     def entrar(self):
         self.abrir('/entrar/')
-        self.page.locator('#id_username').fill('gestor-browser')
+        self.page.locator('#id_login').fill('gestor-browser')
         self.page.locator('#id_password').fill('senha-de-teste-browser')
         self.page.get_by_role('button', name='Entrar', exact=True).click()
-        self.page.wait_for_url(self.live_server_url + '/monografias/')
+        self.page.wait_for_url(self.live_server_url + '/usuarios/painel/')
 
     def preencher(self, campos):
         for campo, valor in campos.items():

@@ -19,13 +19,13 @@ from monografias.models import Banca, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .consultas import monografias_visiveis
 from .forms import ConfirmarConviteForm, RascunhoAlunoForm
-from .roles import obter_papeis
+from .roles import obter_papeis, pode_convidar_para_banca
 from .services import confirmar_convite_externo, emitir_convite_externo, excluir_rascunho, exigir_aluno, salvar_rascunho
 
 
 PERFIS = {
     'aluno': {'papel': 'Aluno', 'titulo': 'Meu percurso acadêmico', 'descricao': 'Organize seus rascunhos e acompanhe seus trabalhos.', 'lista': 'Meus trabalhos'},
-    'professor': {'papel': 'Professor', 'titulo': 'Orientações e coorientações', 'descricao': 'Acompanhe os trabalhos vinculados à sua orientação.', 'lista': 'Trabalhos orientados'},
+    'professor': {'papel': 'Professor', 'titulo': 'Orientações e bancas', 'descricao': 'Acompanhe suas orientações, coorientações e participações como avaliador.', 'lista': 'Meus trabalhos acadêmicos'},
     'coordenador': {'papel': 'Coordenador', 'titulo': 'Coordenação acadêmica', 'descricao': 'Acompanhe os trabalhos e as bancas dos seus cursos.', 'lista': 'Trabalhos dos meus cursos'},
     'administrador': {'papel': 'Administrador', 'titulo': 'Gestão acadêmica', 'descricao': 'Gerencie os cadastros e acompanhe o panorama da instituição.', 'lista': 'Todos os trabalhos'},
 }
@@ -52,6 +52,19 @@ def painel(request, perfil=None):
     if ativo is None:
         return render(request, 'usuarios/painel.html', context)
     trabalhos = monografias_visiveis(request.user, ativo['papel'])
+    if ativo['papel'] == 'Professor':
+        context['participacoes'] = ParticipacaoBanca.objects.filter(
+            professor__usuario=request.user, banca__status__in=['AGENDADA', 'REALIZADA'],
+        ).select_related('banca__monografia').order_by('-banca__inicio', '-pk')[:5]
+        vinculo = request.GET.get('vinculo', '')
+        if vinculo == 'orientacoes':
+            trabalhos = trabalhos.filter(Q(orientador__usuario=request.user) | Q(coorientador__usuario=request.user))
+        elif vinculo == 'bancas':
+            trabalhos = trabalhos.filter(bancas__participacoes__professor__usuario=request.user,
+                                         bancas__status__in=['AGENDADA', 'REALIZADA']).distinct()
+        else:
+            vinculo = ''
+        context['vinculo'] = vinculo
     context['resumo'] = trabalhos.aggregate(
         total=Count('pk'), rascunhos=Count('pk', filter=Q(status_fluxo='RASCUNHO')),
         publicados=Count('pk', filter=Q(status_fluxo='PUBLICADA')),
@@ -87,12 +100,13 @@ def painel(request, perfil=None):
 @require_safe
 def trabalho(request, pk):
     context = contexto_perfil(request, request.GET.get('perfil'))
-    monografia = get_object_or_404(monografias_visiveis(request.user), pk=pk)
+    papel = context['perfil']['papel'] if request.GET.get('perfil') else None
+    monografia = get_object_or_404(monografias_visiveis(request.user, papel), pk=pk)
     bancas = monografia.bancas.prefetch_related('participacoes__professor', 'participacoes__membro_externo').order_by('-inicio')
     context.update({
         'monografia': monografia, 'bancas': bancas,
         'pode_editar': 'Aluno' in context['papeis'] and monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo == 'RASCUNHO',
-        'pode_convidar': request.user.is_staff or ('Coordenador' in context['papeis'] and Curso.objects.filter(pk=monografia.curso_id, coordenador__usuario=request.user).exists()),
+        'pode_convidar': pode_convidar_para_banca(request.user, monografia),
         'convite_liberado': monografia.status_fluxo in ('APROVADA_ORIENTADOR', 'BANCA_AGENDADA'),
     })
     return render(request, 'usuarios/trabalho.html', context)
@@ -161,13 +175,14 @@ def excluir(request, pk):
 @require_http_methods(['GET', 'POST'])
 def emitir_convite(request, pk):
     context = contexto_perfil(request)
-    if not {'Coordenador', 'Administrador'}.intersection(context['papeis']):
+    if not {'Professor', 'Coordenador', 'Administrador'}.intersection(context['papeis']):
         raise PermissionDenied
-    # Coordenação fica limitada ao curso, mesmo que também tenha outro papel.
-    participacoes = ParticipacaoBanca.objects.select_related('banca__monografia', 'membro_externo')
-    if not request.user.is_staff:
-        participacoes = participacoes.filter(banca__monografia__curso__coordenador__usuario=request.user)
+    participacoes = ParticipacaoBanca.objects.select_related(
+        'banca__monografia__orientador', 'banca__monografia__curso__coordenador', 'membro_externo',
+    )
     participacao = get_object_or_404(participacoes, pk=pk, membro_externo__isnull=False)
+    if not pode_convidar_para_banca(request.user, participacao.banca.monografia):
+        raise Http404
     context.update({'participacao': participacao, 'url_confirmacao': request.build_absolute_uri(reverse('usuarios:confirmar-convite', args=[pk]))})
     codigo = 200
     if request.method == 'POST':

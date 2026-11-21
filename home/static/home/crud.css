@@ -22,6 +22,7 @@ td.crud-actions a { display: inline-block; margin: .25rem .6rem .25rem 0; }
 .crud-form label { display: block; font-weight: 700; }
 .crud-form input:not([type=hidden]), .crud-form select, .crud-form textarea { width: 100%; height: auto; padding: .6rem .7rem; border: 1px solid #cbd5e1; border-radius: 10px; background: white; }
 .crud-form input:focus, .crud-form select:focus, .crud-form textarea:focus { outline: 2px solid #0d9488; outline-offset: 2px; }
+.crud-form input[type=checkbox] { width: auto; }
 .crud-form .errorlist { padding-left: 1.2rem; color: #b91c1c; }
 .crud-form [aria-invalid=true] { border-color: #b91c1c !important; }
 .crud-hint { color: #475569; font-size: .92rem; line-height: 1.6; }

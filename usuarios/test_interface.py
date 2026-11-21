@@ -20,7 +20,7 @@ class PerfisInterfaceTests(TestCase):
         cls.aluno_user = User.objects.create_user('aluna-telas', email='aluna@example.com', password='senha-telas-123')
         cls.prof_user = User.objects.create_user('prof-telas', email='prof@example.com', password='senha-telas-123')
         cls.outro_user = User.objects.create_user('outro-telas', password='senha-telas-123')
-        cls.admin = User.objects.create_user('admin-telas', password='senha-telas-123', is_staff=True)
+        cls.admin = User.objects.create_user('admin-telas', password='senha-telas-123', is_staff=True, is_superuser=True)
         cls.sem_perfil = User.objects.create_user('sem-perfil', password='senha-telas-123')
         cls.inativo = User.objects.create_user('inativo', password='senha-telas-123', is_active=False)
         alunos = Group.objects.create(name='Alunos')

@@ -468,6 +468,68 @@ São 59 testes anteriores e 19 novos (17 de interface/segurança, dois de
 navegador). Foram verificadas capturas dos perfis em desktop e celular,
 geradas em `/tmp/perfis-monografias`; não foram incluídas no Git.
 O microserviço, Redis e RabbitMQ não foram executados nem integrados.
+
+## Correção de login e perfis na API — 20/11/2026
+
+Revisão sobre `738df0c`. O login `/entrar/` rejeitava não staff, o índice da
+API herdava a restrição administrativa e Basic tinha precedência sobre a
+sessão. Os testes reproduziram identidade do admin substituindo a de um aluno
+e Basic retido permitindo acesso após logout do navegador.
+
+- `/accounts/login/`, `/entrar/` e `/api-auth/login/` compartilham allauth,
+  usuário/e-mail, template do projeto e destino padrão no painel. `next`
+  preserva destinos locais, incluindo `/api/`, e rejeita destinos externos.
+- Saída pelo sistema/API usa POST com CSRF e retorna à tela de login.
+  `/accounts/logout/` preserva a confirmação por GET sem encerrar a sessão.
+- A API navegável vincula login, painel e logout. Sua raiz apresenta identidade,
+  papéis e links autorizados; conta sem vínculo acessa a própria identidade.
+- A sessão tem prioridade; Basic retido no navegador é ignorado. Clientes
+  sem sessão continuam usando Basic. Escritas por sessão exigem CSRF mesmo
+  na presença de um cabeçalho Basic válido.
+- A restrição administrativa fica explícita em `CRUDViewSet`; páginas de
+  gestão retornam 403 para autenticados sem staff, evitando ciclos de login.
+- Removidos o formulário e o template exclusivos do login administrativo.
+  README, contratos, guia de desenvolvimento e B04 foram atualizados.
+
+Validação: `manage.py check` sem problemas e **89 testes aprovados** com
+PostgreSQL e Chrome, sem testes ignorados. São dez regressões de autenticação
+e um novo cenário de navegador, além dos 78 anteriores. O fluxo Chrome troca
+admin → aluno → professor sem limpar cookies, mantém Basic antigo apenas nas
+requisições ao servidor de teste e verifica a identidade efetiva da API.
+Capturas de login em desktop/celular foram verificadas em `/tmp/login-api`.
+O limite de tentativas foi isolado somente na matriz de testes; permanece
+ativo na aplicação e nos cenários Chrome. Não houve mudança de modelos ou
+migrações, nem integração JWT com o microserviço.
+
+## Cadastro público — 20/11/2026
+
+Revisão de `/accounts/signup/`, sobre as correções locais de login. A
+investigação confirmou que a identidade do cadastro é `auth.User`, a mesma
+do CRUD nativo em `/admin/auth/user/`. A tela ainda usava o template padrão
+do allauth, sem integração visual com o projeto.
+
+- Template próprio com layout responsivo, link de login, POST/CSRF, instruções
+  de senha e erros gerais/por campo. Usuário/e-mail são preservados quando
+  há erros; senhas não são reexibidas.
+- `CadastroContaForm` configurado em `ACCOUNT_FORMS`, preservando as validações
+  do allauth e salvando usuário, e-mail e auditoria `USUARIO_CRIADO` na mesma
+  transação. Não há nova tabela de identidade nem privilégios no cadastro público.
+- Confirmação explícita de conta salva após `user_signed_up` e acesso ao painel.
+- Oito testes verificam conta/e-mail/senha persistidos, login posterior,
+  listagem administrativa, duplicados, senha inválida, CSRF, rollback,
+  privilégios e redirecionamento externo.
+- Novo fluxo Chrome abre cadastro pelo login, corrige senha divergente,
+  salva, sai, entra com e-mail e consulta a conta na administração. Capturas
+  desktop/celular foram verificadas em `/tmp/cadastro-usuarios`.
+
+Validação: `check` e `git diff --check` sem problemas. A suíte agora tem 98
+casos; os 89 anteriores passaram na execução completa. Os oito novos testes
+e o cenário Chrome passaram juntos na reexecução direcionada final (**9/9**),
+após ajustar a senha de teste e o seletor do link administrativo com filtros.
+GET no servidor local da porta 8000 retornou 200 com o novo formulário/CSS.
+Os usuários de teste foram criados somente no banco de testes; nenhuma conta
+de demonstração foi inserida no banco da aplicação. Provisionamento de
+Aluno/Professor, recuperação completa de senha e JWT continuam pendentes.
 Os cenários de convite preparam a aprovação como fixture, sem afirmar que
 existe uma ação de aprovação no principal.
 
@@ -487,3 +549,65 @@ ser consultado com `git log --first-parent --oneline main -1`.
 
 O merge é local; não foi solicitado push para o remoto. `.env`, backup SQLite,
 PostgreSQL, uploads e as cópias em docs/ continuam fora do versionamento.
+
+## Perfis conforme o enunciado anexado — 20/11/2026
+
+Revisão local após leitura de `Trabalho_SistemasDistribuidos_Monografias (1) (2).md`.
+A comparação completa está em [ESCOPO_E_ACESSOS.md](ESCOPO_E_ACESSOS.md).
+Esta revisão integra a consolidação de cadastro, login e acesso por perfil
+registrada ao final deste documento.
+
+- Corrigida a promoção implícita de qualquer staff para Administrador. O papel
+  administrativo exige superusuário ou grupo `Administradores`; os papéis
+  acadêmicos são definidos pelos vínculos, sem depender dos grupos antigos.
+- A mesma regra protege os oito CRUDs, páginas, menus, raiz da API e admin
+  Django. Este último mantém staff/permissões de model e rejeita login de
+  staff sem papel administrativo. Vínculos coexistentes não são ocultados.
+- Formulários administrativos de aluno/professor oferecem Conta de acesso;
+  detalhes mostram o usuário vinculado. Salvar o vínculo libera o perfil na
+  próxima requisição; remover/trocar o vínculo revoga o acesso correspondente.
+- Painel docente com orientações/coorientações, filtro de vínculo e próprias
+  participações em bancas não canceladas. Detalhes com perfil explícito
+  respeitam esse escopo. O orientador principal também pode emitir convites
+  externos elegíveis; coorientador/avaliador não recebe essa autorização.
+- A conta local identificada pelo responsável foi vinculada ao aluno e curso
+  informados, com a matrícula fornecida. A marcação staff foi removida e a
+  manutenção foi registrada em `HistoricoAcao`, sem alterar os demais cadastros.
+- README, contratos, desenvolvimento e pendências reconciliados com o enunciado.
+  Permanecem pendentes os processos de submissão/aprovação, agenda validada,
+  avaliação própria, publicação/catálogo e integração distribuída. IP/VPN e
+  indicadores exigidos pelo enunciado voltam a aparecer explicitamente no backlog.
+
+Validação: **110 testes aprovados**, sem falhas ou casos ignorados, incluindo
+seis cenários Chrome e doze testes novos em `usuarios/test_papeis.py`.
+O cenário de cadastro também cria o vínculo de Professor pelo formulário/API,
+faz logout/login e verifica painel docente e bloqueio administrativo. A troca
+de contas usa professor staff para reproduzir a causa original. Capturas de
+desktop/celular inspecionadas em `/tmp/perfis-escopo`. `manage.py check`,
+`makemigrations --check --dry-run` e `git diff --check` passaram; nenhum model
+ou schema foi alterado. Testes executados somente no banco isolado.
+
+
+## Consolidação das atualizações — 20/11/2026
+
+Commit identificado pela mensagem:
+`fix(usuarios): corrigir cadastro, login e acesso por perfil`.
+
+Reúne as correções locais de login/API, cadastro público, vínculos e separação
+de perfis, formulários/telas, regressões automatizadas e documentação descritas
+nas revisões anteriores. Inclui o enunciado anexado e a comparação de acessos.
+
+O `PENDENCIAS.md` foi conferido novamente contra o enunciado e o código e
+organizado em 13 áreas, com tarefas abertas, prioridades, dependências,
+critérios de aceite e ordem de entrega. Destaca as restrições ainda ausentes
+nos CRUDs de banca/avaliação e nos caminhos do admin, além das pendências de
+PDF, processos acadêmicos, catálogo, indicadores, Redis/filas, auditoria,
+integração e testes de carga. As entregas existentes permanecem separadas do
+trabalho restante; o relatório externo continua identificado como evidência
+recebida, sem execução comprovada.
+
+Validação de referência: 110 testes aprovados na revisão de perfis, incluindo
+seis cenários Chrome, mais `check` e verificação de migrações sem alterações.
+A revisão final é documental e foi conferida com `git diff --check`; não houve
+nova alteração funcional que exigisse repetir a suíte. As cópias locais de
+pendências e histórico em `docs/` foram sincronizadas com os documentos da raiz.

@@ -28,12 +28,15 @@ Formação acadêmica sozinha não determina o papel de uma pessoa.
 
 ## Autenticação e separação de acessos
 
-Os oito CRUDs do router `/api/` são administrativos: exigem uma conta Django
-ativa com `is_staff=True`. A API acadêmica separada usa `/api/usuarios/`.
-Usuários anônimos recebem 401 e usuários sem esse perfil recebem 403.
-Nas chamadas da interface (`X-Requested-With: XMLHttpRequest`), ausência de
-sessão retorna 403 sem desafio HTTP Basic, para mostrar o erro na página sem
-abrir o diálogo de credenciais do navegador. A exigência de autenticação é igual.
+A raiz `/api/` aceita qualquer conta autenticada e retorna `papeis`, o link
+`me` e recursos autorizados: `minhas-monografias` para perfis acadêmicos/admin,
+`meus-rascunhos` para Aluno e as oito coleções para Administrador. Uma conta
+sem vínculo recebe `papeis: []` e acesso à própria identidade.
+Os oito CRUDs exigem conta ativa com papel Administrador (superusuário ou grupo `Administradores`); a API acadêmica usa
+`/api/usuarios/`. Usuários sem permissão recebem 403.
+Sem autenticação, clientes JSON recebem 401 com desafio Basic; navegação HTML,
+Fetch Metadata e `X-Requested-With: XMLHttpRequest` recebem 403 sem diálogo
+nativo de credenciais. Essas requisições de navegador ignoram Basic retido.
 As rotas acadêmicas têm permissões próprias: identidade para autenticados,
 listagem por papel/vínculo, rascunhos do aluno dono e convites com escopo de
 participação. Isso não concede acesso acadêmico aos CRUDs administrativos.
@@ -44,23 +47,41 @@ Crie uma conta administrativa local:
 env/bin/python manage.py createsuperuser
 ```
 
-No navegador, entre em `/entrar/` e abra as telas de gestão ou `/api/`.
-`/api-auth/login/` também permanece disponível. No Postman, selecione
-Basic Auth e use a conta Django criada acima. A senha do PostgreSQL não é uma
-conta de acesso à API. Requisições que usam sessão devem enviar CSRF nas escritas.
+No navegador, entre em `/accounts/login/` e abra o painel ou `/api/`.
+`/entrar/` e `/api-auth/login/` usam o mesmo formulário e aceitam todos os perfis.
+O campo de identificação do formulário é `login` (usuário ou e-mail).
+No Postman, selecione Basic Auth e use sua conta Django sem cookie de sessão.
+A senha do PostgreSQL não é uma conta de acesso à API. Uma sessão presente
+tem prioridade sobre Basic e exige CSRF nas escritas.
 
 O fluxo django-allauth está em `/accounts/signup/`, `/accounts/login/` e
 `/accounts/logout/`, com login por usuário/e-mail e confirmação de e-mail
 opcional desde `0178003`. O e-mail é impresso no terminal pelo backend de
-console. Após login, o destino padrão é `/usuarios/painel/`, que mostra a
-painéis de Aluno, Professor, Coordenador ou Administrador. Login legado,
-admin e Basic Auth continuam ativos; unificar suas políticas é uma pendência.
+console. Após login, o destino padrão é `/usuarios/painel/`, que mostra os
+painéis de Aluno, Professor, Coordenador ou Administrador. Um `next` local
+válido preserva o destino solicitado. `/sair/`, `/accounts/logout/` e
+`/api-auth/logout/` encerram a sessão por POST/CSRF e retornam à tela de login;
+GET em `/accounts/logout/` apenas mostra uma confirmação. A API navegável
+oferece links para login, painel e saída, compartilhando a sessão do sistema.
+`/admin/` mantém o login próprio do Django para contas administrativas.
 
-`configurar_grupos` cria `Alunos`, `Professores` e `Coordenadores` sem atribuir
-usuários. Para obter um papel, é necessário grupo e vínculo com `Aluno.usuario`
-ou `Professor.usuario`; coordenação também exige `Curso.coordenador` apontando
-para o professor da conta. Staff ativo recebe somente o papel `Administrador`
-na resolução atual. Cadastrar conta no allauth não cria esses vínculos.
+`configurar_grupos` cria os três grupos acadêmicos e `Administradores`, sem
+atribuir usuários. Aluno/Professor são identificados pelos vínculos
+`Aluno.usuario`/`Professor.usuario`; coordenação exige `Curso.coordenador`
+apontando para o professor da conta. Não é preciso adicionar grupo acadêmico.
+Administrador exige superusuário ou grupo `Administradores`; `is_staff` não
+concede esse papel. Papéis podem coexistir. Cadastrar conta no allauth não
+cria vínculos: a administração os seleciona no campo **Conta de acesso** dos
+formulários de aluno/professor ou no campo `usuario` dos respectivos CRUDs.
+A conta aparece como `usuario_nome` (somente leitura) nos detalhes.
+
+O formulário público em `/accounts/signup/` cria a identidade `auth.User`
+usada também pela API e pelo CRUD nativo de usuários (`/admin/auth/user/`).
+Recebe `username`, `email`, `password1` e `password2` via POST com CSRF. Erros
+de validação voltam à tela com os campos indicados; o sucesso direciona ao
+painel com uma confirmação. Conta, e-mail e evento `USUARIO_CRIADO` são salvos
+na mesma transação. O formulário não grava uma segunda identidade em Aluno
+ou Professor nem permite atribuir privilégios.
 
 ## Rotas administrativas
 
@@ -91,7 +112,7 @@ registro nas avaliações. Os nomes dos parâmetros são os campos sem acentos,
 por exemplo `?ordering=-data_publicacao`.
 
 As respostas também incluem campos de exibição somente leitura:
-`curso_nome`, `coordenador_nome`, `aluno_nome`, `orientador_nome`,
+`usuario_nome`, `curso_nome`, `coordenador_nome`, `aluno_nome`, `orientador_nome`,
 `coorientador_nome`, `monografia_titulo`, `participante_nome` e descrições
 de status, modalidade, papel e recomendação, conforme o recurso. Os IDs
 originais continuam sendo os campos usados para escrita. Não reenvie o objeto
@@ -160,7 +181,7 @@ automática de recursos do router em `/api/`.
 | Método e rota | Permissão e contrato |
 | --- | --- |
 | `GET /api/usuarios/me/` | Conta autenticada; retorna `id`, `username`, `email` e `papeis`, inclusive lista vazia para conta sem papel |
-| `GET /api/usuarios/monografias/` | Papel acadêmico válido ou staff; resumo paginado com `id`, `titulo`, `status_fluxo` |
+| `GET /api/usuarios/monografias/` | Papel acadêmico válido ou Administrador; resumo paginado com `id`, `titulo`, `status_fluxo` |
 | `GET /api/usuarios/rascunhos/` | Papel Aluno; lista paginada de todos os trabalhos próprios, inclusive fora de RASCUNHO |
 | `POST /api/usuarios/rascunhos/` | Papel Aluno; cria RASCUNHO com aluno e curso obtidos no servidor |
 | `GET /api/usuarios/rascunhos/{id}/` | Papel Aluno e trabalho próprio, em qualquer estado |
@@ -168,15 +189,15 @@ automática de recursos do router em `/api/`.
 | `DELETE /api/usuarios/rascunhos/{id}/` | Aluno dono, estado RASCUNHO e sem vínculo protegido; resposta 204 |
 
 A listagem de resumos reúne os escopos dos papéis: aluno vê os próprios
-trabalhos; professor vê orientações e coorientações; coordenador vê trabalhos
-dos cursos que coordena; staff vê todos. Conta sem papel válido recebe 403.
+trabalhos; professor vê orientações, coorientações e trabalhos de bancas não canceladas em que participa; coordenador vê trabalhos
+dos cursos que coordena; Administrador vê todos. Conta sem papel válido recebe 403.
 Essa listagem não é o catálogo público. Busca e ordenação específicas não
 foram configuradas nas views acadêmicas; não presumir o contrato de filtros
 dos CRUDs administrativos.
 
 No CRUD acadêmico, o queryset contém apenas trabalhos do próprio aluno: um ID
-de outro aluno retorna 404. Staff não ganha acesso a essa rota por ser
-administrador; usa o CRUD administrativo. `PUT` não foi disponibilizado.
+de outro aluno retorna 404. Administrador só usa essa rota quando também tem vínculo de Aluno; a gestão
+geral usa o CRUD administrativo. `PUT` não foi disponibilizado.
 Leitura não depende do estado, mas alteração/exclusão fora de RASCUNHO retorna
 409. `AJUSTES_SOLICITADOS` ainda não reabre edição.
 
@@ -215,8 +236,9 @@ O identificador das rotas abaixo é de **ParticipacaoBanca**, não de Banca.
 POST /api/usuarios/convites/{participacao_id}/emitir/
 ```
 
-Não exige campos no corpo. Exige autenticação e uma das autorizações: staff
-ou papel Coordenador com vínculo ao curso da monografia dessa participação.
+Não exige campos no corpo. Exige autenticação e uma das autorizações:
+Administrador, orientador principal da monografia ou coordenador do curso.
+Coorientador ou avaliador sem um desses vínculos não pode emitir o convite.
 A participação precisa ser externa, estar `CONVIDADO`, pertencer a banca
 `AGENDADA` e a monografia em `APROVADA_ORIENTADOR` ou `BANCA_AGENDADA`.
 Participação inexistente retorna 404; ator sem permissão, 403; pré-condições
@@ -331,12 +353,11 @@ env/bin/python manage.py check
 O banco `test_curso_django_dev` é separado do banco da aplicação. Use `--keepdb`
 porque o usuário da aplicação não tem permissão de criar/remover bancos.
 
-Validação desta entrega: `check` sem problemas, `makemigrations` sem alterações
-e **78 testes aprovados**, incluindo os quatro testes de navegador existentes
-em `home/test_browser.py` e `usuarios/test_browser.py`. Foram acrescentados
-17 testes de interface/segurança e dois fluxos Chrome. Cadastro/recuperação
-de senha completos, concorrência distribuída e integração do microserviço
-continuam pendentes.
+Validação atual: **110 testes aprovados**, incluindo seis cenários Chrome,
+sem casos ignorados. Inclui vínculo de conta por HTML/API, login com painel
+docente, staff sem acesso administrativo, revogação e convite do orientador.
+Recuperação de senha completa, concorrência distribuída e integração do
+microserviço continuam pendentes.
 
 ## Telas integradas
 
@@ -351,7 +372,7 @@ continuam pendentes.
 | Membros externos | `/monografias/membros-externos/` |
 | Avaliações | `/monografias/avaliacoes/` |
 
-Todas as páginas de gestão acima exigem staff. Cada página oferece busca,
+Todas as páginas de gestão acima exigem papel Administrador. Cada página oferece busca,
 paginação, consulta, cadastro, edição e confirmação
 de exclusão. O navegador faz GET/POST/PATCH/DELETE nos endpoints acima, usando
 sessão e CSRF, e mostra erros junto aos campos. Relações aparecem por nome;
@@ -372,20 +393,22 @@ de estado. Busca e navegação entre páginas requerem JavaScript.
 | --- | --- |
 | `/usuarios/painel/` | Seleciona um papel disponível; sem vínculo, mostra orientação para solicitar acesso |
 | `/usuarios/painel/aluno/` | Trabalhos do dono e gestão de rascunhos |
-| `/usuarios/painel/professor/` | Trabalhos orientados e coorientados |
+| `/usuarios/painel/professor/` | Orientações, coorientações e participações em bancas não canceladas; filtro por vínculo e painel docente |
 | `/usuarios/painel/coordenador/` | Trabalhos dos cursos coordenados |
 | `/usuarios/painel/administrador/` | Visão geral e atalhos administrativos |
 | `/usuarios/trabalhos/{id}/` | Detalhes e bancas de um trabalho visível ao usuário |
 | `/usuarios/rascunhos/novo/` | Formulário do próprio rascunho |
 | `/usuarios/rascunhos/{id}/editar/` e `/excluir/` | Escrita do aluno dono apenas em RASCUNHO |
-| `/usuarios/convites/{participacao_id}/emitir/` | Emissão HTML por staff ou coordenação do curso |
+| `/usuarios/convites/{participacao_id}/emitir/` | Emissão HTML por Administrador, orientador principal ou coordenação do curso |
 | `/usuarios/convites/{participacao_id}/` | Aceite externo por código, sem exposição de dados antes da validação |
 
 Os painéis usam `q`, `estado` e `page` na consulta HTML, com dez trabalhos por
 página. Isso não adiciona filtros aos endpoints acadêmicos JSON. As consultas
 compartilhadas em `usuarios/consultas.py` garantem o mesmo escopo básico.
 Quem acumula papéis pode alternar pelas abas; o padrão prioriza Administrador,
-Coordenador, Professor e Aluno. Staff continua recebendo só Administrador.
+Coordenador, Professor e Aluno. `is_staff` não interfere nessa seleção.
+Professor também aceita `vinculo=orientacoes` ou `vinculo=bancas`. Detalhes
+com `?perfil=` respeitam o escopo do perfil selecionado.
 
 Aluno usa POST/PATCH/DELETE da API via `crud.js`. Sem JavaScript, os formulários
 fazem POST HTML, com os mesmos serviços e transações. Campos extras de dono,
@@ -399,7 +422,7 @@ pode ser recuperado pelo GET. Não há envio automático. As condições de esta
 são as mesmas da API e ainda dependem de aprovação não implementada no principal.
 
 A navbar oferece Meu painel e saída para todos os autenticados. Os acessos de
-gestão continuam exclusivos de staff. Os templates allauth existentes foram
+gestão continuam exclusivos do papel Administrador. Os templates allauth existentes foram
 preservados, com confirmação de e-mail opcional. Submissão, aprovação, avaliação,
 publicação e catálogo continuam dependentes de B09–B13/B17.
 

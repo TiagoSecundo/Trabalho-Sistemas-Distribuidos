@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Criar conta · AllTeam Monografias{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'home/conta.css' %}">
+{% endblock %}
+{% block content %}
+<section class="container conta-page" aria-labelledby="cadastro-titulo">
+    <div class="conta-layout">
+        <aside class="conta-intro">
+            <span class="section-label">AllTeam Monografias</span>
+            <h1 id="cadastro-titulo">Crie sua conta</h1>
+            <p>Um acesso para acompanhar seus trabalhos, orientações e bancas.</p>
+            <div class="conta-note">
+                <h2>Como funciona</h2>
+                <ol>
+                    <li>Preencha seus dados de acesso.</li>
+                    <li>Depois de salvar, você será direcionado ao seu painel.</li>
+                    <li>A administração vincula sua conta ao perfil acadêmico correspondente.</li>
+                </ol>
+            </div>
+            <p>Já tem uma conta? <a href="{{ login_url }}">Entrar no sistema</a></p>
+        </aside>
+        <div class="crud-card conta-card">
+            <h2>Seus dados de acesso</h2>
+            <p class="text-muted">Todos os campos são obrigatórios.</p>
+            <form method="post" action="{% url 'account_signup' %}" class="crud-form" novalidate>
+                {% csrf_token %}
+                {{ redirect_field }}
+                {% if form.errors %}
+                <div class="alert alert-danger" role="alert" tabindex="-1">
+                    <strong>Confira os campos indicados.</strong> Sua conta ainda não foi criada.
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+                {% for field in form %}
+                {% if field.is_hidden %}{{ field }}{% else %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    <div id="{{ field.id_for_label }}_errors" class="conta-errors">{{ field.errors }}</div>
+                    <div id="{{ field.id_for_label }}_helptext" class="conta-help">{{ field.help_text }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn app-cta-btn conta-submit">Criar minha conta</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

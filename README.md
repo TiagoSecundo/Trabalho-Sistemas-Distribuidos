@@ -5,7 +5,8 @@ bancas, participantes e avaliações. Usa Django, Django REST Framework,
 PostgreSQL, django-allauth e páginas Django com Bootstrap e JavaScript nativo.
 
 Documentação revisada em **20/11/2026**, após `5f7857b` (PR #3), a entrega
-dos painéis por perfil e a limpeza do legado. O plano original continua em
+dos painéis por perfil, a limpeza do legado, as correções de login/cadastro e a
+revisão de permissões conforme o escopo anexado. O plano original continua em
 [Plano_Refatoracao_CRUD_API_Monografias.pdf](Plano_Refatoracao_CRUD_API_Monografias.pdf);
 o estado atual de B01–B17 está em [PENDENCIAS.md](PENDENCIAS.md).
 
@@ -76,7 +77,7 @@ env/bin/python manage.py runserver
 
 Acesse <http://127.0.0.1:8000/>. Se necessário, use `runserver 8001` e a porta
 8001 no navegador. O comando `configurar_grupos` é idempotente: cria os grupos
-acadêmicos, mas não atribui usuários, permissões Django ou vínculos acadêmicos.
+acadêmicos e `Administradores`, mas não atribui usuários, permissões Django ou vínculos acadêmicos.
 `migrate` também aplica as migrações do django-allauth; o app `usuarios` não
 introduziu tabelas próprias nesta entrega.
 
@@ -90,14 +91,23 @@ atualize dependências, preserve/preencha `.env`, execute `start`, `migrate`,
 | --- | --- |
 | `/accounts/signup/` e `/accounts/login/` | Cadastro e login django-allauth, por usuário ou e-mail, com confirmação de e-mail opcional |
 | `/usuarios/painel/` | Abre o painel do perfil disponível; destino padrão do login allauth |
-| `/entrar/` e `/sair/` | Login administrativo legado e logout por POST; login sem `next` válido segue para `/monografias/` |
+| `/entrar/` e `/api-auth/login/` | Mesmo login allauth para todos os perfis; aceita usuário/e-mail e preserva `next` local |
+| `/sair/`, `/accounts/logout/` e `/api-auth/logout/` | Logout por POST com CSRF; retorna à tela de login para trocar de conta |
 | `/admin/` | Administração Django |
-| `/api/` e `/api-auth/login/` | Referência navegável dos oito CRUDs administrativos e login do DRF |
+| `/api/` | Referência navegável por perfil, com identidade, recursos acadêmicos e CRUDs administrativos conforme autorização |
 
 O backend de e-mail atual escreve as mensagens no terminal; não envia e-mail
 real. A confirmação de e-mail não é exigida para entrar; mensagens geradas podem ser
 consultadas no console durante o desenvolvimento.
 Criar conta no allauth não cria Aluno/Professor nem concede um papel acadêmico.
+
+O formulário de `/accounts/signup/` usa o layout do projeto e salva a conta em
+`auth_user`, o e-mail do allauth e a auditoria na mesma transação. Senhas
+divergentes/fracas, usuário ou e-mail já utilizados aparecem junto aos campos;
+o formulário preserva usuário/e-mail e limpa as senhas. Após salvar, mostra
+**Conta criada com sucesso** no painel. A conta também aparece em
+**Contas e acessos** (`/admin/auth/user/`, conforme as permissões do administrador).
+Esse cadastro funciona por POST com CSRF, inclusive sem JavaScript.
 
 Para o acesso administrativo local:
 
@@ -105,20 +115,42 @@ Para o acesso administrativo local:
 env/bin/python manage.py createsuperuser
 ```
 
-Para um usuário acadêmico, atribua o grupo no admin e vincule a conta ao
-cadastro correspondente. A resolução em `usuarios/roles.py` exige:
+Os perfis acadêmicos são calculados pelos vínculos cadastrados pela
+administração. `is_staff` sozinho **não concede o papel Administrador**.
 
-| Papel | Requisitos |
+| Papel | Requisitos para conta ativa |
 | --- | --- |
-| Aluno | Grupo `Alunos` e `Aluno.usuario` vinculado |
-| Professor | Grupo `Professores` e `Professor.usuario` vinculado |
-| Coordenador | Grupo `Coordenadores`, vínculo com Professor e indicação em `Curso.coordenador` |
-| Administrador | Usuário ativo com `is_staff=True`; esse papel tem precedência na resolução |
+| Aluno | `Aluno.usuario` vinculado à conta |
+| Professor | `Professor.usuario` vinculado à conta |
+| Coordenador | Professor da conta indicado em `Curso.coordenador` |
+| Administrador | `is_superuser=True` ou grupo explícito `Administradores` |
 
-Oito CRUDs em `/api/` e suas telas continuam restritos a staff. Os acessos
-acadêmicos usam `/api/usuarios/`, conforme a tabela abaixo. Login legado,
-admin e Basic Auth continuam disponíveis: a política entre esses acessos e a recuperação de senha ainda precisam ser
-consolidadas. A navbar já oferece painel e logout para qualquer conta autenticada.
+Para liberar o acesso após o cadastro/login:
+
+1. Entre como administrador e abra **Cadastros → Alunos** ou **Professores**.
+2. Crie/edite o cadastro acadêmico, selecione **Conta de acesso** e salve.
+3. Para coordenador, selecione o professor em **Cursos → Coordenador**.
+4. A conta vinculada recebe o perfil na próxima requisição ao painel/API,
+   sem precisar recriar o login ou adicionar grupos acadêmicos manualmente.
+
+O cadastro público não permite escolher privilégios. Grupos `Alunos`,
+`Professores` e `Coordenadores` são mantidos por compatibilidade; sozinhos não
+liberam acesso, e não são necessários quando há vínculo. Remover o vínculo
+revoga o papel correspondente. Administrador pode acumular papéis acadêmicos.
+O acesso a `/admin/` exige também `is_staff` e as permissões de model do Django;
+professor/aluno marcado apenas como staff não entra nessa administração.
+
+O login do sistema, os aliases `/entrar/` e `/api-auth/login/` usam a mesma
+tela allauth, com destino padrão `/usuarios/painel/`. A API navegável oferece
+links para entrar, acessar o painel e sair da mesma sessão. `/api/` reconhece
+todos os perfis; os oito CRUDs e suas telas exigem Administrador. Os recursos acadêmicos
+em `/api/usuarios/` mantêm a autorização por papel e vínculo.
+
+A sessão tem prioridade sobre HTTP Basic e exige CSRF nas escritas. Requisições
+de navegador ignoram Basic retido e não abrem o diálogo nativo de credenciais;
+clientes como Postman/curl sem sessão continuam usando Basic. `/admin/` mantém
+o login próprio da administração Django, com a mesma verificação do papel.
+Recuperação de senha completa e identidade entre serviços continuam pendentes.
 
 ## Telas dos perfis
 
@@ -129,11 +161,11 @@ Quem acumula papéis acadêmicos alterna entre eles pela navegação do painel.
 | Perfil e rota | Funções disponíveis |
 | --- | --- |
 | Aluno — `/usuarios/painel/aluno/` | Próprios trabalhos, busca/status/paginação, contadores, próximas bancas e criação/edição/exclusão de rascunhos |
-| Professor — `/usuarios/painel/professor/` | Orientações e coorientações, detalhes e bancas vinculadas |
+| Professor — `/usuarios/painel/professor/` | Orientações/coorientações, filtro por vínculo, participações em bancas não canceladas e convites externos quando é o orientador principal |
 | Coordenador — `/usuarios/painel/coordenador/` | Trabalhos/bancas dos cursos coordenados e emissão de convites externos elegíveis |
 | Administrador — `/usuarios/painel/administrador/` | Visão geral, cadastros e links da gestão; administração de contas conforme permissões Django |
 
-Sem grupo/vínculo, a conta recebe uma orientação para solicitar a associação à
+Sem vínculo acadêmico ou papel administrativo, a conta recebe uma orientação para solicitar a associação à
 administração. Ocultar links não é a proteção: as views verificam papel e
 objeto, e as consultas de HTML/API compartilham o escopo acadêmico.
 
@@ -161,10 +193,10 @@ Os commits de autenticação acrescentaram:
 | Rota | Entrega |
 | --- | --- |
 | `GET /api/usuarios/me/` | Identidade e papéis da conta autenticada |
-| `GET /api/usuarios/monografias/` | Resumo dos trabalhos do aluno, orientados/coorientados do professor, do curso coordenado ou todos para staff |
+| `GET /api/usuarios/monografias/` | Resumo dos trabalhos do aluno, orientados/coorientados e participações em bancas do professor, do curso coordenado ou todos para Administrador |
 | `GET/POST /api/usuarios/rascunhos/` | Lista de trabalhos próprios e criação de rascunho pelo aluno |
 | `GET/PATCH/DELETE /api/usuarios/rascunhos/{id}/` | Consulta própria; alteração/exclusão apenas em `RASCUNHO` |
-| `POST /api/usuarios/convites/{id}/emitir/` | Emissão de token de participação externa pela coordenação do curso ou staff |
+| `POST /api/usuarios/convites/{id}/emitir/` | Emissão de token de participação externa pelo orientador principal, coordenação do curso ou Administrador |
 | `POST /api/usuarios/convites/{id}/confirmar/` | Confirmação sem conta, com token válido e limitado à participação |
 
 Na criação acadêmica, aluno e curso vêm do servidor. O token externo tem
@@ -192,12 +224,14 @@ pela equipe:
 - [CRUD.md](CRUD.md): contratos, exemplos, telas, convites e auditoria.
 - [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md): configuração, arquitetura e extensão.
 - [PENDENCIAS.md](PENDENCIAS.md): backlog B01–B17 e pendências do microserviço.
+- [ESCOPO_E_ACESSOS.md](ESCOPO_E_ACESSOS.md): comparação com o enunciado anexado e matriz de acesso.
 - [COMMITS.md](COMMITS.md): histórico, validação e limpeza desta entrega.
 
 `docs/` continua ignorada pelo Git, com cópias locais e o documento recebido
 `PENDENCIAS_ATUALIZADO.md`. A decisão desse documento de não criar telas foi
-substituída pelo pedido atual de entregar os perfis. E-mail opcional e retirada
-de IP/VPN foram mantidos. O relatório do microserviço foi incorporado ao backlog
+substituída pelo pedido de entregar os perfis. E-mail opcional foi mantido.
+O enunciado anexado exige IP/VPN institucional; esse controle continua ausente
+e está registrado como pendência, apesar da retirada anterior pela equipe. O relatório do microserviço foi incorporado ao backlog
 como evidência recebida, sem declarar integração ou execução local desse serviço.
 
 `equipe` e `monografias` mantêm os models; `usuarios` contém papéis, consultas,
@@ -231,16 +265,21 @@ para fixtures ou limpeza de testes.
 | --- | --- |
 | `monografias/tests.py` | Oito CRUDs, regras, sessão/Basic, CSRF e integridade |
 | `monografias/test_migrations.py` | Migração vazia e bloqueio de conversão do legado sem mapeamento |
-| `home/test_interface.py` | Login administrativo, formulários, API e respostas HTML |
+| `home/test_interface.py` | Login compartilhado, formulários administrativos, API e respostas HTML |
 | `usuarios/tests.py` | Identidade, visibilidade do aluno e restrição administrativa |
 | `usuarios/tests_security.py` | Papéis/vínculos, rascunhos próprios, tokens e auditoria |
 | `usuarios/test_interface.py` | Painéis, acesso por perfil/objeto, e-mail opcional, HTML, CSRF e auditoria |
-| `home/test_browser.py` e `usuarios/test_browser.py` | Quatro testes opcionais no navegador para os CRUDs administrativos e perfis |
+| `usuarios/test_login_api.py` | Dez testes de login por perfil/rota, troca de usuário, sessão/Basic, CSRF, API navegável e redirects |
+| `usuarios/test_papeis.py` | Separação de staff/admin, vínculos, revogação, coordenação, bancas e convites do orientador |
+| `usuarios/test_cadastro.py` | Oito testes de cadastro, persistência, validação, CSRF, privilégios, rollback e integração com usuários |
+| `home/test_browser.py` e `usuarios/test_browser.py` | Seis testes opcionais no navegador para os CRUDs, perfis, troca de conta e cadastro público |
 
-A validação desta entrega teve **78 testes aprovados, sem testes ignorados**,
-com Django/PostgreSQL e os fluxos de navegador (`RUN_BROWSER_TESTS=1`). `check` passou e não há alterações de migração.
-Consulte [COMMITS.md](COMMITS.md) para os resultados finais. O microserviço
-separado não foi executado ou integrado nesta revisão.
+A suíte completa passou com **110 testes**, incluindo seis fluxos Chrome, sem
+falhas ou testes ignorados. Há cobertura do cadastro até o vínculo acadêmico e
+o login com a nova conta, staff sem privilégios administrativos, revogação,
+isolamento por curso/trabalho, participações em bancas e convite do orientador.
+Consulte [COMMITS.md](COMMITS.md). O microserviço separado não foi executado ou
+integrado nesta revisão.
 
 Para executar também os testes de navegador:
 

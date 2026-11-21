@@ -15,7 +15,7 @@ class SegurancaAcademicaTests(TestCase):
         self.aluno_user = User.objects.create_user(username='aluno_seg', password='SenhaSegura123!')
         self.outro_user = User.objects.create_user(username='outro_seg', password='SenhaSegura123!')
         self.prof_user = User.objects.create_user(username='prof_seg', password='SenhaSegura123!')
-        self.admin_user = User.objects.create_user(username='admin_seg', password='SenhaSegura123!', is_staff=True)
+        self.admin_user = User.objects.create_user(username='admin_seg', password='SenhaSegura123!', is_staff=True, is_superuser=True)
         grupo_aluno = Group.objects.create(name='Alunos')
         grupo_prof = Group.objects.create(name='Professores')
         grupo_coord = Group.objects.create(name='Coordenadores')
@@ -28,7 +28,7 @@ class SegurancaAcademicaTests(TestCase):
         self.outro = Aluno.objects.create(usuario=self.outro_user, nome='Aluno B', matricula='SM002', email='outro@seg.example', curso=self.curso)
         self.mono = Monografia.objects.create(titulo='Monografia A', resumo='Resumo', aluno=self.aluno, orientador=self.prof, curso=self.curso)
 
-    def test_papeis_exigem_grupo_e_vinculo(self):
+    def test_grupo_sem_vinculo_nao_concede_papel(self):
         self.assertEqual(obter_papeis(self.aluno_user), ['Aluno'])
         self.assertIn('Coordenador', obter_papeis(self.prof_user))
         User = get_user_model()

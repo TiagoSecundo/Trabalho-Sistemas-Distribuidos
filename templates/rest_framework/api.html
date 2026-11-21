@@ -1,0 +1,17 @@
+{% extends 'rest_framework/base.html' %}
+{% block branding %}
+<a class="navbar-brand" href="{% url 'index' %}">AllTeam · API</a>
+{% endblock %}
+{% block userlinks %}
+{% if user.is_authenticated %}
+<li><a href="{% url 'usuarios:painel' %}">Meu painel · {{ user.get_username }}</a></li>
+<li>
+    <form method="post" action="{% url 'logout' %}" class="navbar-form">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-default">Sair</button>
+    </form>
+</li>
+{% else %}
+<li><a href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}">Entrar</a></li>
+{% endif %}
+{% endblock %}

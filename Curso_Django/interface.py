@@ -38,7 +38,7 @@ def contexto(config):
         'detalhes': config['detalhes_url'],
         'editar': config['editar_url'],
         'excluir': config['excluir_url'],
-        'login': reverse('login'),
+        'login': reverse('account_login'),
     }
     return {**config, 'api_config': api}
 

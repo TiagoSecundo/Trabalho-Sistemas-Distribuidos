@@ -95,28 +95,37 @@ flowchart LR
 | `interface.py` | Mapeamento explícito entre recurso, tela e endpoint |
 | `views.py` e `urls.py` | Páginas, proteção de acesso e endereços HTML |
 | `templates/crud/` e `crud.js` | Apresentação e consumo da API administrativa pela sessão |
-| `usuarios/roles.py` e `permissions.py` | Papéis calculados por grupo/vínculo e permissões acadêmicas |
+| `usuarios/roles.py` e `permissions.py` | Papéis por vínculo, administrador explícito e permissões acadêmicas |
 | `usuarios/api.py` e `api_urls.py` | Identidade, consultas por vínculo, rascunhos próprios e convites externos |
 | `usuarios/consultas.py` | Queryset de trabalhos visíveis compartilhado por HTML/API |
 | `usuarios/services.py` | Rascunhos e convites com autorização, transação e auditoria |
 | `usuarios/forms.py`, `views.py`, templates e CSS | Painéis, formulários e confirmação externa |
 | `usuarios/convites.py` | Geração, hash, prazo e comparação de tokens |
 | `usuarios/auditoria.py` e `signals.py` | Auditoria de CRUD e sinais de login/logout |
-| `configurar_grupos` | Criação idempotente dos três grupos acadêmicos |
+| `configurar_grupos` | Criação idempotente dos grupos acadêmicos e Administradores |
 
 ## Autorização e provisão de perfis
 
-O usuário padrão `auth.User` continua como identidade. A resolução de papéis
-exige conta ativa; staff recebe `Administrador` com precedência sobre os
-outros papéis. Aluno/Professor exigem o grupo correspondente e vínculo do
-model ao usuário. Coordenador exige o grupo, o vínculo de Professor e a
-coordenação de ao menos um Curso. Ter papel de coordenador não autoriza ações
-em qualquer curso: valide também o objeto da operação.
+O usuário padrão `auth.User` continua como identidade. Conta ativa recebe
+Aluno/Professor pelos vínculos `Aluno.usuario`/`Professor.usuario` e Coordenador
+quando seu professor é indicado em `Curso.coordenador`. Os vínculos são a fonte
+de verdade: grupos acadêmicos não concedem nem são pré-requisitos do papel.
+Administrador exige superusuário ou grupo explícito `Administradores`.
+`is_staff` não altera esses papéis nem oculta vínculos acadêmicos coexistentes.
 
-O comando de grupos não cria contas nem atribui permissões. Allauth cadastra
-contas com confirmação de e-mail opcional, mas não provisiona os models acadêmicos.
-Os vínculos e grupos são configurados manualmente pelo admin. Os CRUDs de
-Aluno/Professor aceitam vínculo a conta existente, sem administrar senhas.
+Allauth cria a conta sem privilégios. A administração associa **Conta de acesso**
+nos formulários de aluno/professor, disponíveis com JavaScript/API ou POST HTML.
+Selecionar o coordenador do curso habilita também a coordenação. As escritas
+via CRUD são auditadas. Remover/trocar um vínculo revoga o acesso na próxima
+requisição, sem cache de papel na sessão. Não inferir vínculo por nome ou e-mail.
+
+`eh_administrador` é compartilhado por `IsAdministrador`, decorator HTML,
+context processor de menus e `AdministracaoAcademica`. O admin Django usa
+`usuarios.apps.AdministracaoConfig`: exige papel administrativo, `is_staff` e
+as permissões Django usuais. Seu formulário também rejeita staff sem papel,
+evitando aceitar login que seria imediatamente bloqueado pelo AdminSite.
+O comando `configurar_grupos` apenas cria grupos, incluindo `Administradores`;
+não promove contas existentes. Não migrar staff automaticamente para esse grupo.
 
 `monografias_visiveis` combina os escopos com `Q` e `distinct()` para API e HTML;
 `RascunhoAlunoViewSet` limita o queryset ao dono e usa `IsDonoMonografia`.
@@ -132,8 +141,47 @@ chame `get_object()`/`check_object_permissions()` e filtre também as listas;
 
 `ACCOUNT_EMAIL_VERIFICATION='optional'` é a decisão atual, integrada em
 `0178003`/`5f7857b`. O login de conta não confirmada foi testado pela interface
-Django e no navegador. Login legado, admin e Basic Auth continuam ativos;
-recuperação de senha e uma política comum para esses caminhos permanecem no backlog.
+Django e no navegador. `/accounts/login/`, `/entrar/` e `/api-auth/login/`
+usam a mesma view allauth e `templates/account/login.html`; o destino padrão é
+`/usuarios/painel/`, ou um `next` local validado. Todos os logouts do sistema/API
+exigem POST/CSRF para encerrar a sessão e retornam ao login. GET em
+`/accounts/logout/` preserva a confirmação do allauth sem encerrar a sessão.
+A API navegável inclui os mesmos links.
+
+`AutenticacaoBasica` só aceita Basic sem sessão e fora das requisições de navegador
+(Fetch Metadata, `Accept: text/html` ou `X-Requested-With`). Assim, credenciais
+retidas não substituem a sessão e não contornam a proteção CSRF de
+`SessionAuthentication`. Clientes curl/Postman sem sessão continuam usando Basic.
+`/admin/` mantém o login próprio da administração Django.
+
+A permissão padrão da API exige autenticação; `CRUDViewSet` exige também
+`IsAdministrador` explicitamente. Os endpoints acadêmicos mantêm suas permissões
+por papel/objeto e o router usa `RaizAPIPorPerfil` para listar recursos autorizados.
+Nas telas administrativas, `administrador_required` redireciona anônimos ao
+login e retorna 403 para autenticados sem papel Administrador, evitando ciclos de redirect.
+Recuperação de senha completa e JWT continuam no backlog.
+
+## Cadastro público de contas
+
+`/accounts/signup/` mantém a view de cadastro do allauth, configurada com
+`ACCOUNT_FORMS['signup'] = 'usuarios.forms.CadastroContaForm'`. A classe
+preserva as validações e o hash de senha da biblioteca. Seu `save()` envolve
+a conta `auth.User`, o `EmailAddress` e a auditoria `USUARIO_CRIADO` em uma
+transação; falha de uma dessas escritas desfaz o conjunto. Não crie uma segunda
+tabela de identidade para o formulário: a conta deve aparecer no CRUD nativo
+`/admin/auth/user/` e ser usada no login e na API.
+
+O template `account/signup.html` envia POST com CSRF ao próprio endpoint,
+sem depender do JavaScript dos CRUDs. Exibe erros gerais e por campo, conserva
+usuário/e-mail e não reexibe senhas. `user_signed_up` acrescenta a confirmação
+de sucesso, e o usuário segue para o painel. O cadastro não atribui staff,
+superusuário, grupos ou vínculos acadêmicos enviados pelo cliente.
+
+`usuarios/test_cadastro.py` verifica persistência, login após logout, listagem
+administrativa, duplicados, senha fraca/divergente, CSRF, privilégios, rollback
+e redirect externo. O cenário Chrome percorre o link do login, corrige um
+formulário inválido, salva, entra novamente e confere a conta na administração.
+Os dados de teste são gravados somente em `test_curso_django_dev`.
 
 ## Serviços de processo e transações
 
@@ -217,10 +265,27 @@ Resultado da entrega dos perfis em 20/11/2026: **78 testes aprovados**, com
 de migração. São 19 novos testes: 17 em `usuarios/test_interface.py` e dois
 em `usuarios/test_browser.py`, além dos 59 anteriores.
 
+Após a correção de login/API: **89 testes aprovados**, incluindo dez novos
+testes em `usuarios/test_login_api.py` e mais um cenário Chrome de troca de
+conta. A matriz de logins desativa rate limiting apenas nessa classe de teste,
+pois repete dezenas de entradas pelo mesmo IP; a aplicação e os testes Chrome
+mantêm os limites do allauth.
+
+A revisão de cadastro levou a suíte a 98 casos. A correção dos papéis conforme
+o escopo acrescentou doze casos: **110 testes aprovados na suíte completa**,
+incluindo seis cenários Chrome, sem casos ignorados. O fluxo de cadastro no
+navegador também vincula a nova conta a Professor pela tela administrativa,
+faz logout/login e verifica painel/API e responsividade. Execute a regressão
+de papéis isoladamente com:
+
+```bash
+env/bin/python manage.py test usuarios.test_papeis --keepdb --noinput
+```
+
 Há cobertura de login allauth sem confirmação obrigatória, conta inativa/sem
 vínculo, isolamento por aluno/curso, múltiplos papéis, paginação/busca, CSRF,
 rascunhos por API/HTML, auditoria/rollback, convites e responsividade. Faltam
-recuperação/cadastro completos, concorrência, demais processos acadêmicos e
+recuperação de senha, concorrência, demais processos acadêmicos e
 integração distribuída. `force_login()` em teste de autorização não comprova
 por si só o login; os casos novos também executam login real pelo allauth.
 
@@ -252,8 +317,9 @@ paginação, vínculos protegidos, erros por campo, datas de banca, sessão expi
 falha de rede, escape de conteúdo e navegação em tela estreita. Para capturas
 locais, acrescente `BROWSER_ARTIFACTS=/tmp/monografias-ui` ao comando. Chrome e
 servidor temporário são encerrados pelo teste; não ocupam a porta 8000.
-Os dois testes acadêmicos cobrem CRUD do aluno, alternância Professor/Coordenador,
-convite externo e administração. Capturas dos perfis podem ser geradas com
+Os quatro testes de usuários cobrem cadastro público, CRUD do aluno, alternância Professor/Coordenador,
+convite externo, administração e troca admin → aluno → professor sem limpar
+cookies, inclusive com Basic antigo retido. Capturas dos perfis podem ser geradas com
 `BROWSER_ARTIFACTS=/tmp/perfis-monografias`. Não acesse o ORM síncrono enquanto
 o loop do Playwright estiver ativo; prepare fixtures antes de iniciá-lo e
 confira a persistência pela API real durante o cenário.
@@ -276,9 +342,14 @@ registro antes de conferir o estado. No HTML, o helper em
 
 `usuarios/views.py` valida o perfil antes de montar cada painel, e usa
 `monografias_visiveis` também para detalhes. A consulta do aluno usa sua autoria;
-a do professor, orientação/coorientação; a do coordenador, o curso coordenado.
+a do professor, orientação/coorientação ou participação em banca não cancelada;
+a do coordenador, o curso coordenado. A emissão de convite reutiliza
+`pode_convidar_para_banca`: administrador, orientador principal ou coordenador
+daquele curso. Coorientação e participação não concedem a ação de convidar.
 A busca HTML tem dez resultados por página e mantém filtros na paginação.
-As métricas representam o escopo total do perfil, antes dos filtros de busca.
+As métricas representam o perfil e o filtro docente de vínculo, antes da busca
+por texto/situação. `vinculo=orientacoes|bancas` é um filtro HTML do professor;
+o detalhe com `?perfil=` respeita também o papel solicitado.
 
 `usuarios/base.html` estende o layout existente. As abas mostram apenas papéis
 válidos, mas autorização é conferida novamente nas views/serviços. Formulários
@@ -300,5 +371,6 @@ README, CRUD, DESENVOLVIMENTO, COMMITS e PENDENCIAS ficam na raiz e são version
 As cópias numeradas foram consolidadas; `docs/` continua local/ignorada, com
 cópias de trabalho. Preserve o PDF e demais fontes como referência histórica.
 A documentação recebida sobre o microserviço está incorporada ao backlog B17
-como relato externo, não como comprovação de execução. IP/VPN foi retirado por
-decisão da equipe; sua ausência não deve ser anunciada como controle de segurança.
+como relato externo, não como comprovação de execução. A retirada anterior de
+IP/VPN pela equipe diverge do enunciado recém-anexado: o controle institucional
+continua pendente. A comparação completa está em [ESCOPO_E_ACESSOS.md](ESCOPO_E_ACESSOS.md).

@@ -17,6 +17,8 @@ def monografias_visiveis(usuario, papel=None):
         filtros |= Q(aluno__usuario=usuario)
     if 'Professor' in papeis:
         filtros |= Q(orientador__usuario=usuario) | Q(coorientador__usuario=usuario)
+        filtros |= Q(bancas__participacoes__professor__usuario=usuario,
+                     bancas__status__in=['AGENDADA', 'REALIZADA'])
     if 'Coordenador' in papeis:
         filtros |= Q(curso__coordenador__usuario=usuario)
     return queryset.filter(filtros).distinct()

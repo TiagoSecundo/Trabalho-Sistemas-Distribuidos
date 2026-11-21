@@ -1,5 +1,6 @@
 """Fluxos reais dos perfis; opt-in com RUN_BROWSER_TESTS=1."""
 from datetime import timedelta
+import base64
 import os
 from pathlib import Path
 import shutil
@@ -23,7 +24,7 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         from playwright.sync_api import sync_playwright
         User = get_user_model()
         self.aluno_user = User.objects.create_user('aluno-browser', email='aluno@browser.example', password='senha-browser-123')
-        self.prof_user = User.objects.create_user('prof-browser', email='prof@browser.example', password='senha-browser-123')
+        self.prof_user = User.objects.create_user('prof-browser', email='prof@browser.example', password='senha-browser-123', is_staff=True)
         self.admin_user = User.objects.create_superuser('admin-browser', email='admin@browser.example', password='senha-browser-123')
         self.aluno_user.groups.add(Group.objects.create(name='Alunos'))
         self.prof_user.groups.add(Group.objects.create(name='Professores'), Group.objects.create(name='Coordenadores'))
@@ -50,7 +51,6 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         self.page.goto(self.live_server_url + path)
 
     def entrar(self, username):
-        self.page.context.clear_cookies()
         self.abrir('/accounts/login/')
         self.page.locator('#id_login').fill(username)
         self.page.locator('#id_password').fill('senha-browser-123')
@@ -102,9 +102,132 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
         self.page.get_by_role('button', name='Alternar navegação').click()
         self.page.get_by_role('button', name='Sair', exact=True).click()
-        self.page.wait_for_url(self.live_server_url + '/')
+        self.page.wait_for_url(self.live_server_url + '/accounts/login/')
         self.abrir('/usuarios/painel/')
         self.assertIn('/accounts/login/', self.page.url)
+        self.assertEqual(self.erros_js, [])
+
+    def test_troca_admin_aluno_professor_na_mesma_sessao_do_navegador(self):
+        from playwright.sync_api import expect
+
+        # Simula um navegador que reteve Basic do admin antes da correção.
+        basic = base64.b64encode(b'admin-browser:senha-browser-123').decode()
+        self.page.route(self.live_server_url + '/**', lambda route: route.continue_(
+            headers={**route.request.headers, 'Authorization': 'Basic ' + basic},
+        ))
+        self.abrir('/api/')
+        self.page.get_by_role('link', name='Entrar', exact=True).click()
+        expect(self.page.locator('h1')).to_have_text('Acesse sua conta')
+        self.screenshot('login-desktop.png')
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.screenshot('login-mobile.png')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.page.set_viewport_size({'width': 1366, 'height': 960})
+        self.page.locator('#id_login').fill('admin-browser')
+        self.page.locator('#id_password').fill('senha-browser-123')
+        self.page.get_by_role('button', name='Entrar', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/api/')
+        self.page.get_by_role('link', name='Meu painel', exact=False).click()
+        expect(self.page.locator('h1')).to_have_text('Gestão acadêmica')
+        self.page.get_by_role('button', name='Sair', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/accounts/login/')
+        status = self.page.evaluate("async () => (await fetch('/api/usuarios/me/')).status")
+        self.assertEqual(status, 403)
+
+        for usuario, papeis, titulo in (
+            ('aluno-browser', ['Aluno'], 'Meu percurso acadêmico'),
+            ('prof@browser.example', ['Professor', 'Coordenador'], 'Coordenação acadêmica'),
+        ):
+            self.page.locator('#id_login').fill(usuario)
+            self.page.locator('#id_password').fill('senha-browser-123')
+            self.page.get_by_role('button', name='Entrar', exact=True).click()
+            self.page.wait_for_url(self.live_server_url + '/usuarios/painel/')
+            expect(self.page.locator('h1')).to_have_text(titulo)
+            identidade = self.page.evaluate("async () => (await fetch('/api/usuarios/me/')).json()")
+            self.assertEqual(identidade['papeis'], papeis)
+            self.page.get_by_role('link', name='Referência da API', exact=True).click()
+            self.page.wait_for_url(self.live_server_url + '/api/')
+            raiz = self.page.evaluate("async () => (await fetch('/api/', {headers: {'Accept': 'application/json'}})).json()")
+            self.assertEqual(raiz['papeis'], papeis)
+            self.assertNotIn('alunos', raiz)
+            self.page.get_by_role('button', name='Sair', exact=True).click()
+            self.page.wait_for_url(self.live_server_url + '/accounts/login/')
+        self.assertEqual(self.erros_js, [])
+
+    def test_cadastro_publico_salva_usuario_e_permite_login(self):
+        from playwright.sync_api import expect
+
+        self.abrir('/accounts/login/')
+        self.page.get_by_role('link', name='Criar conta', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/accounts/signup/')
+        expect(self.page.locator('h1')).to_have_text('Crie sua conta')
+        self.screenshot('cadastro-desktop.png')
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.screenshot('cadastro-mobile.png')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+        self.page.set_viewport_size({'width': 1366, 'height': 960})
+
+        self.page.locator('#id_username').fill('conta-nova-browser')
+        self.page.locator('#id_email').fill('nova-conta@browser.example')
+        self.page.locator('#id_password1').fill('Rios&Montanhas-7284!')
+        self.page.locator('#id_password2').fill('Senha-divergente-2026!')
+        self.page.get_by_role('button', name='Criar minha conta').click()
+        expect(self.page.get_by_role('alert')).to_contain_text('Sua conta ainda não foi criada')
+        expect(self.page.locator('#id_password2_errors')).not_to_be_empty()
+        expect(self.page.locator('#id_username')).to_have_value('conta-nova-browser')
+        expect(self.page.locator('#id_email')).to_have_value('nova-conta@browser.example')
+        self.page.locator('#id_password1').fill('Rios&Montanhas-7284!')
+        self.page.locator('#id_password2').fill('Rios&Montanhas-7284!')
+        with self.page.expect_response(lambda r: r.url.endswith('/accounts/signup/') and r.request.method == 'POST') as resposta:
+            self.page.get_by_role('button', name='Criar minha conta').click()
+        self.assertEqual(resposta.value.status, 302)
+        self.page.wait_for_url(self.live_server_url + '/usuarios/painel/')
+        expect(self.page.get_by_text('Conta criada com sucesso.', exact=False)).to_be_visible()
+        identidade = self.page.request.get(self.live_server_url + '/api/usuarios/me/').json()
+        self.assertEqual(identidade['username'], 'conta-nova-browser')
+        self.assertEqual(identidade['papeis'], [])
+
+        self.page.get_by_role('button', name='Sair', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/accounts/login/')
+        self.page.locator('#id_login').fill('nova-conta@browser.example')
+        self.page.locator('#id_password').fill('Rios&Montanhas-7284!')
+        self.page.get_by_role('button', name='Entrar', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/usuarios/painel/')
+        self.assertEqual(self.page.request.get(self.live_server_url + '/api/usuarios/me/').json()['id'], identidade['id'])
+        self.page.get_by_role('button', name='Sair', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/accounts/login/')
+        self.entrar('admin-browser')
+        self.page.get_by_role('link', name='Contas e acessos', exact=False).click()
+        self.page.locator('#searchbar').fill('conta-nova-browser')
+        self.page.locator('#changelist-search input[type=submit]').click()
+        expect(self.page.locator('#result_list')).to_contain_text('conta-nova-browser')
+        self.page.locator('#result_list').get_by_role('link', name='conta-nova-browser', exact=True).click()
+        self.page.wait_for_url(f'**/admin/auth/user/{identidade["id"]}/change/**')
+        expect(self.page.locator('#id_username')).to_have_value('conta-nova-browser')
+        # O cadastro acadêmico libera o perfil da conta criada, sem promover staff.
+        self.abrir('/equipe/adicionar/?tipo=professor')
+        self.page.locator('#id_nome').fill('Docente recém-cadastrado')
+        self.page.locator('#id_usuario').select_option(str(identidade['id']))
+        self.page.locator('#id_email').fill('nova-conta@browser.example')
+        self.page.locator('#id_departamento').fill('Computação')
+        self.page.locator('#id_area_pesquisa').fill('Sistemas distribuídos')
+        with self.page.expect_response(lambda r: r.url.endswith('/api/professores/') and r.request.method == 'POST') as resposta:
+            self.page.get_by_role('button', name='Salvar professor').click()
+        self.assertEqual(resposta.value.status, 201)
+        self.page.wait_for_url('**/equipe/professor/*/')
+        expect(self.page.get_by_text('conta-nova-browser', exact=True)).to_be_visible()
+        self.page.get_by_role('button', name='Sair', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/accounts/login/')
+        self.page.locator('#id_login').fill('nova-conta@browser.example')
+        self.page.locator('#id_password').fill('Rios&Montanhas-7284!')
+        self.page.get_by_role('button', name='Entrar', exact=True).click()
+        self.page.wait_for_url(self.live_server_url + '/usuarios/painel/')
+        expect(self.page.locator('h1')).to_have_text('Orientações e bancas')
+        self.assertEqual(self.page.request.get(self.live_server_url + '/api/usuarios/me/').json()['papeis'], ['Professor'])
+        self.assertEqual(self.page.request.get(self.live_server_url + '/api/alunos/').status, 403)
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.screenshot('perfil-professor-mobile.png')
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
         self.assertEqual(self.erros_js, [])
 
     def test_professor_coordenador_convite_e_administrador(self):
@@ -113,7 +236,7 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         expect(self.page.locator('h1')).to_have_text('Coordenação acadêmica')
         self.screenshot('perfil-coordenador-desktop.png')
         self.page.get_by_role('navigation', name='Seus perfis').get_by_role('link', name='Professor', exact=True).click()
-        expect(self.page.locator('h1')).to_have_text('Orientações e coorientações')
+        expect(self.page.locator('h1')).to_have_text('Orientações e bancas')
         self.screenshot('perfil-professor-desktop.png')
         self.abrir(f'/usuarios/trabalhos/{self.trabalho.pk}/')
         self.page.get_by_role('link', name='Preparar convite').click()

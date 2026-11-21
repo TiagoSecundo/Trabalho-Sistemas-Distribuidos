@@ -16,7 +16,7 @@ from .models import Avaliacao, Banca, MembroExterno, Monografia, ParticipacaoBan
 class CRUDAcademicoTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.admin = get_user_model().objects.create_user('administrador', password='senha-de-teste', is_staff=True)
+        cls.admin = get_user_model().objects.create_user('administrador', password='senha-de-teste', is_staff=True, is_superuser=True)
         cls.usuario = get_user_model().objects.create_user('aluno', password='senha-de-teste')
         cls.professor = Professor.objects.create(nome='Ana', email='ana@example.com', departamento='Computação', area_pesquisa='Redes')
         cls.outro_professor = Professor.objects.create(nome='Bruno', email='bruno@example.com', departamento='Computação', area_pesquisa='IA')

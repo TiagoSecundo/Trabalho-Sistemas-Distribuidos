@@ -13,7 +13,7 @@ from monografias.models import Banca, Monografia
 class InterfaceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.admin = get_user_model().objects.create_user('gestor', password='teste-seguro', is_staff=True)
+        cls.admin = get_user_model().objects.create_user('gestor', password='teste-seguro', is_staff=True, is_superuser=True)
         cls.comum = get_user_model().objects.create_user('comum', password='teste-seguro')
         cls.professor = Professor.objects.create(nome='Ana', email='ana@example.com', departamento='Computação', area_pesquisa='Redes')
         cls.curso = Curso.objects.create(nome='Computação', codigo='CC', coordenador=cls.professor)
@@ -27,7 +27,7 @@ class InterfaceTests(TestCase):
         self.client.logout()
         response = self.client.get('/')
         self.assertContains(response, 'Monografias, orientações e bancas')
-        self.assertContains(response, '/entrar/')
+        self.assertContains(response, '/accounts/login/')
 
     def test_todos_recursos_tem_formulario_lista_e_configuracao_da_api(self):
         configs = [recurso_equipe(tipo) for tipo in ('aluno', 'professor', 'curso')]
@@ -48,18 +48,18 @@ class InterfaceTests(TestCase):
         for url in ('/equipe/?tipo=usuario', '/equipe/curso/9999/', '/monografias/segredos/', '/monografias/bancas/9999/'):
             self.assertEqual(self.client.get(url).status_code, 404)
 
-    def test_login_staff_redirect_seguro_e_saida_post(self):
+    def test_login_comum_redirect_seguro_e_saida_post(self):
         self.client.logout()
-        response = self.client.post('/entrar/?next=/monografias/bancas/', {'username': 'gestor', 'password': 'teste-seguro'})
+        response = self.client.post('/entrar/?next=/monografias/bancas/', {'login': 'gestor', 'password': 'teste-seguro'})
         self.assertRedirects(response, '/monografias/bancas/')
         self.assertEqual(self.client.get('/sair/').status_code, 405)
-        self.assertRedirects(self.client.post('/sair/'), '/')
-        response = self.client.post('/entrar/?next=https://example.com/', {'username': 'gestor', 'password': 'teste-seguro'})
-        self.assertRedirects(response, '/monografias/')
+        self.assertRedirects(self.client.post('/sair/'), '/accounts/login/')
+        response = self.client.post('/entrar/?next=https://example.com/', {'login': 'gestor', 'password': 'teste-seguro'})
+        self.assertRedirects(response, '/usuarios/painel/')
         self.client.logout()
-        response = self.client.post('/entrar/', {'username': 'comum', 'password': 'teste-seguro'})
-        self.assertContains(response, 'Esta área exige uma conta administrativa')
-        self.assertEqual(self.client.get('/monografias/').status_code, 302)
+        response = self.client.post('/entrar/', {'login': 'comum', 'password': 'teste-seguro'})
+        self.assertRedirects(response, '/usuarios/painel/')
+        self.assertEqual(self.client.get('/monografias/').status_code, 403)
 
     def test_formulario_crud_curso_e_exclusao_protegida(self):
         response = self.client.post('/equipe/adicionar/?tipo=curso', {'nome': 'Engenharia', 'codigo': 'ENG', 'coordenador': self.professor.pk})

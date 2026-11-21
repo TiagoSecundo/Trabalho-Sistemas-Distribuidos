@@ -1,6 +1,11 @@
 """Autorização por papel e vínculo acadêmico (análogo ao @PreAuthorize)."""
 from rest_framework.permissions import BasePermission
-from .roles import obter_papeis
+from .roles import eh_administrador, obter_papeis
+
+
+class IsAdministrador(BasePermission):
+    def has_permission(self, request, view):
+        return eh_administrador(request.user)
 
 
 class IsAluno(BasePermission):

@@ -188,7 +188,7 @@
             <div class="footer-mini">
                 <div class="container d-flex justify-content-between flex-wrap">
                     <span>&copy; {% now "Y" %} AllTeam</span>
-                    {% if user.is_staff %}<a href="/api/" class="text-light">Referência da API</a>{% endif %}
+                    {% if user.is_authenticated %}<a href="{% url 'api-root' %}" class="text-light">Referência da API</a>{% endif %}
                 </div>
             </div>
         </footer>

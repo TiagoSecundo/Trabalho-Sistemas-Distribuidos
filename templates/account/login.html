@@ -4,14 +4,15 @@
 <section class="crud-page container">
     <div class="crud-form-shell crud-card p-4">
         <span class="section-label text-muted">AllTeam Monografias</span>
-        <h1>Acesse a gestão acadêmica</h1>
-        <p>Entre com sua conta administrativa para organizar monografias, orientações e bancas.</p>
-        <form method="post" class="crud-form">
+        <h1>Acesse sua conta</h1>
+        <p>Entre com seu usuário ou e-mail para acessar seu painel de aluno, professor, coordenador ou administrador.</p>
+        <form method="post" action="{% url 'account_login' %}" class="crud-form">
             {% csrf_token %}
             {{ form.as_p }}
-            <input type="hidden" name="next" value="{{ next }}">
+            {{ redirect_field }}
             <button type="submit" class="btn app-cta-btn">Entrar</button>
         </form>
+        <p class="mt-4 mb-0">Ainda não tem conta? <a href="{{ signup_url }}">Criar conta</a></p>
     </div>
 </section>
 {% endblock %}

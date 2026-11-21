@@ -5,9 +5,11 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from rest_framework import serializers, viewsets
 from rest_framework.exceptions import APIException
+from rest_framework.permissions import IsAuthenticated
 
 from .services import OperacaoNaoPermitida, ServicoCRUD
 from usuarios.auditoria import registrar_acao
+from usuarios.permissions import IsAdministrador
 
 
 class Conflito(APIException):
@@ -50,6 +52,8 @@ class ModelSerializerValidado(serializers.ModelSerializer):
 
 
 class CRUDViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdministrador]
+
     def perform_create(self, serializer):
         with transaction.atomic():
             self.salvar(serializer)

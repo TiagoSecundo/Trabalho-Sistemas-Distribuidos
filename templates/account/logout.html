@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Sair · AllTeam Monografias{% endblock %}
+{% block content %}
+<section class="crud-page container">
+    <div class="crud-form-shell crud-card p-4">
+        <h1>Sair da conta</h1>
+        <p>Deseja encerrar a sessão de {{ user.get_username }}?</p>
+        <form method="post" action="{% url 'account_logout' %}">
+            {% csrf_token %}
+            {{ redirect_field }}
+            <button type="submit" class="btn app-cta-btn">Confirmar saída</button>
+            <a href="{% url 'usuarios:painel' %}" class="btn btn-outline-secondary">Voltar ao painel</a>
+        </form>
+    </div>
+</section>
+{% endblock %}
