@@ -124,14 +124,14 @@ class EmitirConviteExternoView(APIView):
     def post(self, request, pk):
         with transaction.atomic():
             participacao = get_object_or_404(
-         ParticipacaoBanca.objects.select_for_update(
-        of=('self',)
-    ).select_related(
-        'banca__monografia__curso__coordenador',
-        'membro_externo'
-    ),
-    pk=pk,
-)
+                ParticipacaoBanca.objects.select_for_update(
+                    of=('self',)
+                ).select_related(
+                    'banca__monografia__curso__coordenador',
+                    'membro_externo'
+                ),
+                pk=pk,
+            )
             curso = participacao.banca.monografia.curso
             coordenador = curso.coordenador
             autorizado = request.user.is_staff or (

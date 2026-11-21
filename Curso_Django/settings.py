@@ -171,7 +171,7 @@ ACCOUNT_SIGNUP_FIELDS = [
 ]
 
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
 
 # Apenas durante o desenvolvimento
 EMAIL_BACKEND = (
