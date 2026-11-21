@@ -1,0 +1,16 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}{{ monografia.titulo }} · AllTeam{% endblock %}
+{% block perfil_content %}
+<a class="back-link" href="{{ perfil.url }}">← Voltar ao painel</a>
+<article class="perfil-section perfil-detail"><span class="perfil-status">{{ monografia.get_status_fluxo_display }}</span><h1>{{ monografia.titulo }}</h1>
+<p class="perfil-caption">{{ monografia.curso.nome }} · {{ monografia.aluno.nome }}</p>
+<dl class="crud-details"><div><dt>Orientador</dt><dd>{{ monografia.orientador.nome }}</dd></div><div><dt>Coorientador</dt><dd>{{ monografia.coorientador.nome|default:'Não informado' }}</dd></div><div class="wide"><dt>Resumo</dt><dd>{{ monografia.resumo }}</dd></div><div class="wide"><dt>Palavras-chave</dt><dd>{{ monografia.palavras_chave|join:', '|default:'Não informadas' }}</dd></div><div><dt>Submissão</dt><dd>{{ monografia.data_submissao|date:'d/m/Y H:i'|default:'Não submetido' }}</dd></div><div><dt>Publicação</dt><dd>{{ monografia.data_publicacao|date:'d/m/Y'|default:'Não publicado' }}</dd></div></dl>
+{% if pode_editar %}<div class="crud-actions"><a class="btn app-cta-btn" href="{% url 'usuarios:editar-rascunho' monografia.pk %}">Editar rascunho</a><a class="btn btn-outline-danger" href="{% url 'usuarios:excluir-rascunho' monografia.pk %}">Excluir rascunho</a></div>{% endif %}
+{% if user.is_staff %}<a class="btn btn-outline-secondary" href="{% url 'monografias:detalhes' monografia.pk %}">Abrir na gestão administrativa</a>{% endif %}
+</article>
+<section class="perfil-section mt-4"><h2>Bancas e participantes</h2>
+{% for banca in bancas %}<article class="perfil-banca"><div class="perfil-work-top"><h3>{{ banca.inicio|date:'d/m/Y · H:i' }} até {{ banca.fim|date:'H:i' }}</h3><span class="perfil-status">{{ banca.get_status_display }}</span></div><p>{{ banca.get_modalidade_display }}{% if banca.local %} · {{ banca.local }}{% endif %}</p>{% if banca.link %}<a href="{{ banca.link }}" rel="noopener noreferrer" target="_blank">Acessar reunião</a>{% endif %}
+<ul class="perfil-participants">{% for participacao in banca.participacoes.all %}<li><div><strong>{% if participacao.professor %}{{ participacao.professor.nome }}{% else %}{{ participacao.membro_externo.nome }}{% endif %}</strong><span>{{ participacao.get_papel_display }} · {{ participacao.get_convite_status_display }}</span></div>{% if pode_convidar and convite_liberado and banca.status == 'AGENDADA' and participacao.convite_status == 'CONVIDADO' and participacao.membro_externo_id %}<a href="{% url 'usuarios:emitir-convite' participacao.pk %}">Preparar convite</a>{% endif %}</li>{% empty %}<li>Nenhum participante cadastrado.</li>{% endfor %}</ul>
+{% if pode_convidar and not convite_liberado %}<p class="perfil-caption">A emissão de convites fica disponível após a aprovação da orientação.</p>{% endif %}</article>{% empty %}<p class="perfil-caption">Este trabalho ainda não possui banca cadastrada.</p>{% endfor %}
+</section>
+{% endblock %}

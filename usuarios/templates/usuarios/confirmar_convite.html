@@ -1,0 +1,4 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Confirmar participação · AllTeam{% endblock %}
+{% block perfil_content %}<section class="crud-form-shell perfil-section"><span class="perfil-eyebrow">Convidado externo</span><h1>Confirmar participação</h1>
+{% if confirmado %}<div class="alert alert-success" role="status">Participação confirmada com sucesso.</div><p>A coordenação já pode consultar sua confirmação. Você pode fechar esta página.</p>{% else %}<p>Use o código enviado pela coordenação para aceitar seu convite.</p><form method="post" class="crud-form">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div class="form-group"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}<small class="form-text text-muted">{{ field.help_text }}</small></div>{% endfor %}<button type="submit" class="btn app-cta-btn">Confirmar minha participação</button></form>{% endif %}</section>{% endblock %}
