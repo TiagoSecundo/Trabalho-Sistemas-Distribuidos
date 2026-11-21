@@ -1,17 +1,44 @@
-# Registro dos commits da entrega
+# Registro dos commits e das entregas
 
-Registro local, excluído do Git junto com a pasta `docs/`, conforme solicitado.
+Registro canônico versionado, consolidado em **20/11/2026**. A entrega dos
+perfis parte de `5f7857b` (PR #3). As seções da refatoração e autenticação
+preservam o histórico anterior; o resultado dos painéis e da limpeza está
+no fim deste documento. `docs/COMMITS.md` é apenas uma cópia local.
 
-## Branches e escopo
+## Estado observado antes desta entrega
 
-- Ponto de partida da entrega: `main`, em `abf487f`.
-- Integração criada: `develop`, também em `abf487f`.
-- Branch de implementação: `feature/refatoracao-crud-monografias`.
-- Entrega: 11 commits, de `00ff6c8` a `70b1cb9`.
-- Gitflow organiza as branches; Conventional Commits organiza as mensagens.
-- Os commits são locais. A integração posterior em main está registrada abaixo; não foi feito push.
-- `docs/`, ambiente virtual, dados PostgreSQL e uploads não foram incluídos.
-- O PDF do plano está na raiz e foi versionado com o README.
+| Referência local | Commit | Situação |
+| --- | --- | --- |
+| `main` e `origin/main` | `5f7857b` | Merge do PR #3 de autenticação |
+| `origin/feature/autenticacao` | `0178003` | E-mail opcional e documentos recebidos |
+| `feature/refatoracao-crud-monografias` e sua referência origin | `70b1cb9` | Série de refatoração já integrada pelo PR #1 |
+| `develop` | `abf487f` | Base antiga; não recebeu as integrações observadas em main |
+
+O registro considera as referências já disponíveis nesta cópia do repositório;
+não pressupõe atualização de branches além desse histórico. A recomendação de
+Gitflow continua válida, mas os merges observados foram feitos diretamente em
+`main`. O histórico anterior documenta as entregas; os commits desta revisão são
+registrados após a validação dos painéis.
+
+## Linha do tempo
+
+| Data | Commit(s) | Entrega |
+| --- | --- | --- |
+| 10/11/2026 | `74e3114` | Primeiro commit |
+| 15/11/2026 | `abf487f` | Configuração inicial do PostgreSQL |
+| 15/11/2026 | `00ff6c8` a `70b1cb9` | 11 commits de refatoração, CRUD, interface, testes e documentação |
+| 15/11/2026 | `14543ac` | Merge do PR #1, `feature/refatoracao-crud-monografias` |
+| 20/11/2026 | `39d076d` | Alteracoes autenticacao |
+| 20/11/2026 | `fda173a` | finalizando autenticacao |
+| 20/11/2026 | `9d04dc0` | Merge do PR #2, `feature/autenticacao` |
+| 20/11/2026 | `0178003`, `5f7857b` | E-mail opcional, documentos e merge do PR #3 |
+
+## Série de refatoração de 15/11
+
+A implementação partiu de `abf487f` e foi organizada em 11 commits na branch
+`feature/refatoracao-crud-monografias`. O texto a seguir preserva o registro
+por responsabilidade. Ambiente virtual, PostgreSQL, uploads e docs/ ficaram
+fora dessa série; o PDF original foi versionado com o README.
 
 ## Critério de separação
 
@@ -27,7 +54,7 @@ as consultas e os templates antigos receberam adaptações mínimas no commit
 de modelagem até a entrada da nova interface. Foram removidas apenas linhas
 vazias excedentes no fim de quatro arquivos, identificadas pelo git diff --check.
 
-## Sequência
+## Sequência dos 11 commits de refatoração
 
 | Ordem | Commit | Responsabilidade |
 | --- | --- | --- |
@@ -234,7 +261,10 @@ Arquivos:
 - `Plano_Refatoracao_CRUD_API_Monografias.pdf`
 - `README.md`
 
-## Validação
+## Validação histórica da refatoração (15/11)
+
+Os itens abaixo são o registro da entrega anterior, não uma nova execução de
+cada commit durante a revisão de 20/11. O resultado atual está mais adiante.
 
 - Cada um dos 11 commits foi extraído para uma pasta temporária e passou em
   `manage.py check`, usando o conteúdo daquele commit, não os arquivos finais
@@ -248,27 +278,212 @@ Arquivos:
   Chrome e PostgreSQL. Ela não foi repetida apenas para reorganizar os commits;
   nesta etapa só houve ajuste de documentação, exclusões e espaços em branco.
 
-## Consulta e integração futura
+## Integração da refatoração — 14543ac
 
-Para consultar os commits e seus detalhes:
+O histórico compartilhado registra o PR #1 como merge de `70b1cb9` em
+`14543ac`, com pais `74e3114` e `70b1cb9`. Portanto, revisar/integrar essa série
+não é mais uma pendência. A classificação e migração de dados legados continuam
+em B06, sem impedir o registro da integração já realizada.
+
+## Autenticação inicial — 39d076d
+
+Mensagem original: `Alteracoes autenticacao`, em 20/11/2026.
+
+- Configura apps, middleware, backend e URLs do django-allauth no pacote ativo.
+- Define login por username/e-mail, cadastro com e-mail único, confirmação
+  obrigatória no fluxo allauth e backend de e-mail no console.
+- Cria o app `usuarios`, painel de identidade/papéis e as primeiras rotas
+  `/api/usuarios/me/` e `/api/usuarios/monografias/`.
+- Resolve papéis usando grupos e vínculos a Aluno, Professor e coordenação de
+  Curso; staff é tratado como Administrador.
+- Adiciona permissões de papel e três testes de autenticação/visibilidade.
+- Mantém o login administrativo em `/entrar/`, com destino explícito para
+  `/monografias/` quando não há `next` válido.
+- Também altera o pacote antigo `cursodjango`; essas alterações não tornam esse
+  pacote a configuração usada por `manage.py`.
+
+Principais arquivos: `Curso_Django/settings.py`, `Curso_Django/urls.py`,
+`usuarios/roles.py`, `permissions.py`, `api.py`, `api_urls.py`, `views.py`,
+`urls.py`, `templates/usuarios/painel.html` e `tests.py`. O app possui
+`migrations/__init__.py`, mas não introduz models/tabelas próprios.
+
+## Rascunhos, convites e auditoria — fda173a
+
+Mensagem original: `finalizando autenticacao`, em 20/11/2026.
+A comparação principal desta revisão foi `14543ac..9d04dc0`, abrangendo os
+dois commits de autenticação (31 arquivos alterados no conjunto).
+
+| Área | Implementação efetiva |
+| --- | --- |
+| Configuração | `python-dotenv`, `.env.example`, chave/senha por ambiente, debug/hosts configuráveis e flags de cookies/HTTPS condicionadas a DEBUG |
+| Dependências | Inclui `django-allauth==65.22.1` e `python-dotenv>=1.0,<2` em `requirements.txt` |
+| Grupos | Comando idempotente `configurar_grupos` cria Alunos, Professores e Coordenadores sem atribuição automática |
+| Consulta acadêmica | Reúne monografias por autoria, orientação/coorientação e coordenação; staff vê todos |
+| Autorização | Classes de permissão por dono/orientador/coordenador/avaliador; somente parte já aplicada aos endpoints existentes |
+| Rascunhos do aluno | Rotas próprias para GET/POST/PATCH/DELETE, dono/curso definidos no servidor, alteração/exclusão limitada a RASCUNHO |
+| Convites externos | Emissão por staff ou coordenação do curso; confirmação sem conta com token escopado, hash, prazo, transação e bloqueio da participação |
+| Auditoria | Eventos de login/logout, CRUD REST e POST HTML, rascunhos e convites em HistoricoAcao |
+| Testes | Dez novos casos em `usuarios/tests_security.py`, além dos três do commit anterior |
+| Artefatos | Acrescenta backlog na raiz, patch de segurança e script de conversão de settings antigos |
+
+Os principais arquivos são `usuarios/api.py`, `api_urls.py`, `permissions.py`,
+`convites.py`, `auditoria.py`, `signals.py`, `apps.py`,
+`management/commands/configurar_grupos.py`, `tests_security.py`,
+`Curso_Django/api.py`, `Curso_Django/interface.py`, `Curso_Django/settings.py`,
+`requirements.txt` e `.env.example`.
+
+Não foram criadas novas migrações de domínio nesse commit. O allauth traz
+migrações da dependência, aplicadas pelo `manage.py migrate`. O comando de
+grupos é separado e não substitui cadastro/vínculo de contas.
+
+O arquivo `PENDENCIAS.md` adicionado nesse commit ainda repetia o estado
+anterior da refatoração; esta revisão atualiza os recursos que já chegaram.
+O nome do commit não significa que todo B04 ou os processos B09–B15 estejam
+concluídos.
+
+## Integração da autenticação — 9d04dc0
+
+O PR #2 mescla `feature/autenticacao` em `main`, com pais `14543ac` e
+`fda173a`. A referência local `origin/main` também aponta para `9d04dc0` nesta
+revisão. Não há necessidade de integrar novamente as duas features descritas.
+
+## Diagnóstico histórico no commit 9d04dc0
+
+- A emissão do convite exige aprovação de orientação, mas a ação que registra
+  essa aprovação ainda não existe; o teste configura o status diretamente.
+- O cadastro administrativo de banca/avaliação não exige todas as guardas
+  acadêmicas do plano. Criar campos de estado ou classes de permissão não
+  implementa a sequência de submissão, defesa e publicação.
+- O painel acadêmico mostra identidade e papéis; a interface dos novos
+  rascunhos/convites e dos demais processos está pendente.
+- Login allauth convive com login legado, admin e Basic Auth. A política de
+  e-mail/contas deve ser consolidada e testada entre esses acessos.
+- IP/VPN aparece em `seguranca_monografias.patch`, mas
+  `usuarios/middleware.py` não existe na aplicação e não está configurado.
+  O script de conversão também menciona esse módulo. O patch é uma proposta,
+  não evidência de proteção instalada; não integra o procedimento atual de setup.
+- A auditoria já recebe eventos, mas falta acesso ao histórico, retenção e
+  cobertura dos caminhos que não passam pelos helpers HTTP.
+
+Essas diferenças estão refletidas nas linhas B02/B04/B07/B09–B15 do backlog.
+
+## Validação anterior — 20/11/2026, código 9d04dc0
+
+Ambiente: Python 3.12.3, Django 6.0.4, PostgreSQL 16, dependências instaladas e
+`.env` local preenchido. A instância local foi preparada com o script do
+projeto, incluindo o banco isolado `test_curso_django_dev`.
+
+| Comando | Resultado observado |
+| --- | --- |
+| `env/bin/python scripts/postgres_local.py start --test-database` | Banco de testes preparado |
+| `env/bin/python manage.py check` | Sem problemas |
+| `env/bin/python manage.py makemigrations --check --dry-run` | No changes detected |
+| `env/bin/python manage.py test --keepdb --noinput` | 59 testes descobertos; 57 aprovados; 2 ignorados; nenhum erro/falha |
+
+A suíte concluiu em aproximadamente 21 segundos. Os dois testes ignorados são
+de `home/test_browser.py`, pois `RUN_BROWSER_TESTS=1` não foi ativado. A
+contagem anterior de 46 pertence à refatoração: os 13 testes adicionados em
+`usuarios` elevaram o total para 59. Não foi repetida a execução no navegador
+nesta revisão documental.
+
+A restrição de conexão do sandbox exigiu executar a preparação do banco, a
+suíte e a verificação do histórico de migrações com acesso local autorizado.
+Os erros de conexão dessa primeira tentativa não são falhas dos testes da
+aplicação. Os resultados acima são os das execuções com acesso ao PostgreSQL.
+
+Os casos atuais não comprovam cadastro/confirmação/recuperação de senha allauth
+ponta a ponta, toda a matriz de professor/coordenador, concorrência ou o fluxo
+acadêmico completo. A cobertura necessária está em `PENDENCIAS.md`.
+
+## Ajustes anteriores de ambiente e documentação após o PR #2
+
+Foi configurado um `.env` local com chave própria e a senha do banco existente;
+valores não são registrados aqui nem no Git. A ausência das dependências novas
+e das variáveis explica os erros iniciais de inicialização após o pull. Esse
+ajuste local não é um commit da feature.
+
+Nesta revisão foram atualizados README, contratos da API, guia de
+desenvolvimento, histórico e ambas as cópias do backlog. O PDF continua como
+baseline de 11/11. Nenhum código de negócio ou migration foi alterado por esta
+atualização documental.
+
+## Comandos de consulta
 
 ```bash
-git log --oneline --reverse develop..feature/refatoracao-crud-monografias
-git show --stat 70b1cb9
+git log --oneline --graph --all -20
+git log --reverse --oneline 14543ac..9d04dc0
+git show --stat 39d076d fda173a
+git diff --stat 14543ac..9d04dc0
+git branch -avv
 git status --short
 git ls-files docs
 ```
 
-As regras acadêmicas pendentes continuam listadas em `PENDENCIAS.md`.
+O último comando não lista arquivos: `docs/` continua local. Os documentos
+canônicos agora ficam na raiz, sem cópias numeradas.
 
-## Integração posterior em main
+## PR #3 — 0178003 / 5f7857b
 
-A pedido do usuário, a feature foi mesclada diretamente em `main` com
-`git merge --ff-only feature/refatoracao-crud-monografias`.
+A equipe tornou `ACCOUNT_EMAIL_VERIFICATION` opcional e adicionou documentos
+na raiz. O backlog recebido em `docs/PENDENCIAS_ATUALIZADO.md` foi lido antes
+da implementação dos painéis. Sua proposta de não criar novas telas foi
+substituída pela solicitação atual do usuário. Foram mantidas as decisões de
+e-mail opcional, retirada de IP/VPN e integração do microserviço ainda pendente.
 
-- `main` e `feature/refatoracao-crud-monografias` apontam para
-  `70b1cb9af3b3ce7faadb22c13e91a978b5dc38c6` e possuem conteúdo e histórico iguais.
-- A branch ativa passou a ser `main`; o workspace permanece limpo.
-- `develop` continua no ponto inicial `abf487f`.
-- Não houve conflitos, novo commit de merge, mudança de código ou push.
-- `docs/` permanece local e ignorada pelo Git.
+## Entrega dos perfis e limpeza — 20/11/2026
+
+- Quatro painéis responsivos, navegação por múltiplos papéis, conta sem vínculo,
+  busca, filtro de estado, paginação, métricas e próximas bancas por escopo.
+- Detalhe de trabalho com autorização; gestão do próprio rascunho por API/HTML.
+- Emissão e aceite de convite externo com as mesmas regras existentes na API,
+  sem token na URL, sem cache e com proteção CSRF no HTML.
+- Consultas em `usuarios/consultas.py` e escritas em `usuarios/services.py`,
+  compartilhadas por HTML/API. Auditoria transacional e tradução de conflitos
+  dos rascunhos preservadas, com testes de rollback.
+- Navbar com painel/logout para não staff, entrada acadêmica pela home e
+  preservação do login/CRUD administrativo.
+- Remoção de `cursodjango` (cinco fontes), `scripts/proteger_settings.py`,
+  `seguranca_monografias.patch`, `requeriments.txt`, esqueletos vazios
+  `home/{admin,models,tests}.py` e `usuarios/{admin,models}.py`.
+- Consolidação e remoção de `COMMITS (1).md`, `CRUD (1).md`,
+  `DESENVOLVIMENTO (1).md`, `PENDENCIAS (1).md` e `PENDENCIAS (2).md`.
+- Backup `db.sqlite3.backup` preservado localmente e retirado do rastreamento.
+  Migrações, Equipe, banco PostgreSQL, `.env`, PDF do plano, Planta baixa.pdf
+  e documento de rotas recebidos foram preservados.
+- Backlog B01–B17 consolidado com as observações do microserviço recebido,
+  distinguindo código local validado de relato externo não executado.
+
+### Evidências desta entrega
+
+| Verificação | Resultado |
+| --- | --- |
+| `manage.py check` | Sem problemas |
+| `manage.py makemigrations --check --dry-run` | Sem alterações |
+| Testes acadêmicos direcionados | 30 aprovados |
+| Novos cenários de navegador | 2 aprovados |
+| `RUN_BROWSER_TESTS=1 manage.py test --keepdb --noinput` | **78 aprovados, sem falhas ou testes ignorados**, incluindo quatro cenários Chrome |
+
+A suíte completa levou aproximadamente 49 segundos, em PostgreSQL isolado.
+São 59 testes anteriores e 19 novos (17 de interface/segurança, dois de
+navegador). Foram verificadas capturas dos perfis em desktop e celular,
+geradas em `/tmp/perfis-monografias`; não foram incluídas no Git.
+O microserviço, Redis e RabbitMQ não foram executados nem integrados.
+Os cenários de convite preparam a aprovação como fixture, sem afirmar que
+existe uma ação de aprovação no principal.
+
+### Commits da entrega e integração
+
+| Commit | Responsabilidade |
+| --- | --- |
+| `4515604` | Painéis, consultas/serviços compartilhados, rascunhos, convites e 19 testes novos |
+| `ba8c71e` | Remoção do legado/duplicatas e backup fora do rastreamento |
+
+A documentação consolidada é registrada em um terceiro commit separado.
+A branch de trabalho é `feature/telas-perfis-academicos`, criada a partir de
+`5f7857b`. `git fetch origin` confirmou que não havia novos commits em
+`origin/main` além dessa base. A integração em `main` usa merge com registro
+próprio (`--no-ff`), preservando os commits da entrega. O hash do merge pode
+ser consultado com `git log --first-parent --oneline main -1`.
+
+O merge é local; não foi solicitado push para o remoto. `.env`, backup SQLite,
+PostgreSQL, uploads e as cópias em docs/ continuam fora do versionamento.
