@@ -1,10 +1,12 @@
 from django.urls import path
 from .api import (
     MinhaContaView, MinhasMonografiasView, RascunhoAlunoViewSet,
-    EmitirConviteExternoView, ConfirmarConviteExternoView,
+    EmitirConviteExternoView, ConfirmarConviteExternoView, 
+    TokenMicroservicoView,
 )
 
 urlpatterns = [
+    path('token-microservico/', TokenMicroservicoView.as_view(), name='token-microservico',),
     path('me/', MinhaContaView.as_view(), name='me'),
     path('monografias/', MinhasMonografiasView.as_view(), name='minhas-monografias'),
     path('rascunhos/', RascunhoAlunoViewSet.as_view({'get': 'list', 'post': 'create'}), name='meus-rascunhos'),
