@@ -226,6 +226,19 @@ São usados pelo serializer da API e pelo POST HTML. `RascunhoAlunoViewSet`
 herda de `CRUDViewSet` e reutiliza a tradução de conflitos de integridade/estado;
 o evento registrado é o acadêmico, sem duplicar `CRUD_*`.
 
+## Token para o microserviço
+
+`POST /api/usuarios/token-microservico/` exige sessão do sistema e CSRF.
+O corpo pode informar `role=aluno|orientador|coordenador|admin` quando a conta
+possui vários papéis. A autorização usa os vínculos atuais; `is_staff` sozinho
+não libera `admin`. A resposta 200 inclui `access` (Bearer), `token_type`,
+`role` e `expires_in=600`; tem `Cache-Control: no-store`. Sem chave
+`MICROSERVICO_JWT_SIGNING_KEY` de pelo menos 32 caracteres, retorna 503.
+O token leva IDs/vínculos do papel selecionado. Essa rota é o emissor do
+sistema principal, mas a verificação/revogação no serviço separado e o fluxo
+integrado ainda precisam de teste entre os serviços. O JWT não substitui a
+sessão/CSRF do CRUD principal.
+
 ## Convite de membro externo
 
 O identificador das rotas abaixo é de **ParticipacaoBanca**, não de Banca.
@@ -353,7 +366,8 @@ env/bin/python manage.py check
 O banco `test_curso_django_dev` é separado do banco da aplicação. Use `--keepdb`
 porque o usuário da aplicação não tem permissão de criar/remover bancos.
 
-Validação atual: **110 testes aprovados**, incluindo seis cenários Chrome,
+Validação atual após o merge: **115 testes aprovados**, incluindo seis cenários
+Chrome,
 sem casos ignorados. Inclui vínculo de conta por HTML/API, login com painel
 docente, staff sem acesso administrativo, revogação e convite do orientador.
 Recuperação de senha completa, concorrência distribuída e integração do

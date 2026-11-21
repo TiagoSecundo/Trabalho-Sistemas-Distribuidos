@@ -611,3 +611,23 @@ seis cenários Chrome, mais `check` e verificação de migrações sem alteraç�
 A revisão final é documental e foi conferida com `git diff --check`; não houve
 nova alteração funcional que exigisse repetir a suíte. As cópias locais de
 pendências e histórico em `docs/` foram sincronizadas com os documentos da raiz.
+
+
+## Merge do PR #4 na main local — 21/11/2026
+
+`origin/main` avançou para `3448d33` (PR #4), com o emissor JWT de `b019850`.
+O merge local preserva `c7230af` (cadastro, login, perfis e documentação) e
+os commits remotos. O Git aplicou a união sem conflitos textuais; foi feita
+uma revisão de compatibilidade para manter os papéis atuais no novo emissor.
+
+O endpoint `POST /api/usuarios/token-microservico/` exige sessão/CSRF,
+seleciona um dos papéis autorizados pelos vínculos e emite token de dez minutos
+com chave `MICROSERVICO_JWT_SIGNING_KEY` configurada. Sem chave válida, retorna
+503 apenas nessa rota. `requirements.txt` inclui SimpleJWT; `.env.example`
+mostra a variável necessária. Cinco testes novos verificam assinatura/claims,
+professor staff sem papel admin, revogação da coordenação, ausência de chave
+e CSRF. A validação do consumo pelo microserviço continua pendente.
+
+Suíte completa após o merge: **115 testes aprovados**, incluindo seis cenários
+Chrome. `manage.py check` passou. Os arquivos de documentação foram alinhados
+com a nova rota; a chave JWT real não foi adicionada ao repositório.

@@ -96,7 +96,7 @@ flowchart LR
 | `views.py` e `urls.py` | Páginas, proteção de acesso e endereços HTML |
 | `templates/crud/` e `crud.js` | Apresentação e consumo da API administrativa pela sessão |
 | `usuarios/roles.py` e `permissions.py` | Papéis por vínculo, administrador explícito e permissões acadêmicas |
-| `usuarios/api.py` e `api_urls.py` | Identidade, consultas por vínculo, rascunhos próprios e convites externos |
+| `usuarios/api.py`, `jwt_api.py` e `api_urls.py` | Identidade, consultas por vínculo, rascunhos, convites e emissor JWT para serviço separado |
 | `usuarios/consultas.py` | Queryset de trabalhos visíveis compartilhado por HTML/API |
 | `usuarios/services.py` | Rascunhos e convites com autorização, transação e auditoria |
 | `usuarios/forms.py`, `views.py`, templates e CSS | Painéis, formulários e confirmação externa |
@@ -159,7 +159,12 @@ A permissão padrão da API exige autenticação; `CRUDViewSet` exige também
 por papel/objeto e o router usa `RaizAPIPorPerfil` para listar recursos autorizados.
 Nas telas administrativas, `administrador_required` redireciona anônimos ao
 login e retorna 403 para autenticados sem papel Administrador, evitando ciclos de redirect.
-Recuperação de senha completa e JWT continuam no backlog.
+Recuperação de senha completa e integração/validação de JWT entre serviços
+continuam no backlog. O PR #4 adicionou `TokenMicroservicoView`, acessível
+por sessão/CSRF, com seleção de um papel autorizado, claims acadêmicas e
+validade de dez minutos. Exige `MICROSERVICO_JWT_SIGNING_KEY` compartilhada
+(32+ caracteres); com chave ausente/curta devolve 503. O endpoint emite, mas
+não prova que o microserviço confere/revoga tokens ou reconcilia IDs/estados.
 
 ## Cadastro público de contas
 
@@ -273,7 +278,8 @@ mantêm os limites do allauth.
 
 A revisão de cadastro levou a suíte a 98 casos. A correção dos papéis conforme
 o escopo acrescentou doze casos: **110 testes aprovados na suíte completa**,
-incluindo seis cenários Chrome, sem casos ignorados. O fluxo de cadastro no
+incluindo seis cenários Chrome, sem casos ignorados. Após o PR #4 e cinco
+testes do emissor JWT, a suíte completa passou com **115 testes**. O fluxo de cadastro no
 navegador também vincula a nova conta a Professor pela tela administrativa,
 faz logout/login e verifica painel/API e responsividade. Execute a regressão
 de papéis isoladamente com:

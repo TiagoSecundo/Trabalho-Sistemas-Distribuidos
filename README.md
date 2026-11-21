@@ -44,6 +44,7 @@ Preencha os valores na raiz do projeto:
 | `POSTGRES_PASSWORD` | Senha do usuário `curso_django_app` no banco local existente |
 | `DJANGO_DEBUG` | `1` para desenvolvimento HTTP local |
 | `DJANGO_ALLOWED_HOSTS` | `127.0.0.1,localhost` |
+| `MICROSERVICO_JWT_SIGNING_KEY` | Chave compartilhada de 32+ caracteres para emitir JWT ao microserviço; necessária apenas para essa rota |
 
 Para gerar a chave e copiá-la para `DJANGO_SECRET_KEY`:
 
@@ -83,7 +84,9 @@ introduziu tabelas próprias nesta entrega.
 
 Após reiniciar o computador, execute `start` novamente. Depois de um pull,
 atualize dependências, preserve/preencha `.env`, execute `start`, `migrate`,
-`configurar_grupos` e `check` antes de iniciar o servidor.
+`configurar_grupos` e `check` antes de iniciar o servidor. A dependência
+`djangorestframework-simplejwt` veio do PR #4; reinstale `requirements.txt`
+após atualizar a branch.
 
 ## Acesso e papéis
 
@@ -198,6 +201,7 @@ Os commits de autenticação acrescentaram:
 | `GET/PATCH/DELETE /api/usuarios/rascunhos/{id}/` | Consulta própria; alteração/exclusão apenas em `RASCUNHO` |
 | `POST /api/usuarios/convites/{id}/emitir/` | Emissão de token de participação externa pelo orientador principal, coordenação do curso ou Administrador |
 | `POST /api/usuarios/convites/{id}/confirmar/` | Confirmação sem conta, com token válido e limitado à participação |
+| `POST /api/usuarios/token-microservico/` | Emissão de JWT curto para o papel acadêmico escolhido na sessão; exige CSRF e chave compartilhada configurada |
 
 Na criação acadêmica, aluno e curso vêm do servidor. O token externo tem
 hash persistido, validade e bloqueio de nova confirmação após o aceite.
@@ -205,6 +209,15 @@ Seu `{id}` é o ID da participação, não da banca. A emissão exige monografia
 aprovada pelo orientador ou com banca agendada, banca `AGENDADA` e participação
 `CONVIDADO`. Ainda não há ação de submissão/aprovação para alcançar esses
 estados pela aplicação; o teste prepara esse estado diretamente no banco.
+
+A rota de JWT recebida do PR #4 aceita somente sessão autenticada e POST com
+CSRF. Para uma conta com mais de um papel, envie `role=aluno`, `orientador`,
+`coordenador` ou `admin` conforme o perfil autorizado; para um único papel,
+`role` é opcional. A resposta traz `access` (Bearer) e validade de dez minutos.
+Sem `MICROSERVICO_JWT_SIGNING_KEY` válida, responde 503; o restante do sistema
+continua funcionando. O verificador do microserviço precisa usar a mesma chave
+e as mesmas regras de assinatura. A emissão foi testada localmente, mas chamadas
+reais entre serviços, revogação de tokens e sincronização de dados ainda faltam.
 
 A auditoria registra login/logout, escritas dos CRUDs REST e formulários HTML,
 rascunhos acadêmicos e emissão/confirmação de convites. Falta completar os
@@ -214,7 +227,8 @@ Continuam pendentes submissão, aprovação/devolução, disponibilidade e quór
 banca, recusa e convites internos, avaliação pelo próprio participante,
 fechamento de resultado, upload/download de PDF, publicação e catálogo público.
 Os painéis já atendem às funções disponíveis no principal; o percurso completo
-depende desses processos e da integração descrita em B17.
+depende desses processos e da integração descrita em B17. O PR #4 adicionou
+o emissor JWT local, sem comprovar o consumo do token pelo microserviço.
 
 ## Documentação e organização
 
@@ -274,7 +288,8 @@ para fixtures ou limpeza de testes.
 | `usuarios/test_cadastro.py` | Oito testes de cadastro, persistência, validação, CSRF, privilégios, rollback e integração com usuários |
 | `home/test_browser.py` e `usuarios/test_browser.py` | Seis testes opcionais no navegador para os CRUDs, perfis, troca de conta e cadastro público |
 
-A suíte completa passou com **110 testes**, incluindo seis fluxos Chrome, sem
+Após o merge do PR #4, a suíte completa passou com **115 testes**, incluindo
+seis fluxos Chrome, sem
 falhas ou testes ignorados. Há cobertura do cadastro até o vínculo acadêmico e
 o login com a nova conta, staff sem privilégios administrativos, revogação,
 isolamento por curso/trabalho, participações em bancas e convite do orientador.

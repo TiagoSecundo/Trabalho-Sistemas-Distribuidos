@@ -30,7 +30,7 @@ Vincular/remover a conta no cadastro ou trocar a coordenação altera o acesso n
 
 | Requisito | Situação após a revisão | Trabalho restante |
 | --- | --- | --- |
-| Allauth, senha protegida e perfis distintos | Login/cadastro, validação de senha, sessão e papéis por vínculo; telas próprias e bloqueio administrativo verificados | Recuperação de senha completa e identidade compartilhada entre serviços |
+| Allauth, senha protegida e perfis distintos | Login/cadastro, validação de senha, sessão e papéis por vínculo; telas próprias e bloqueio administrativo verificados | Recuperação de senha completa; emissor JWT local recebido do PR #4 requer chave compartilhada, validação/revogação no microserviço e teste entre serviços |
 | Aluno cadastra trabalho e acompanha estados | Rascunhos próprios e acompanhamento implementados | Upload privado, validação PDF/tamanho (~50 MB), SHA-256, submissão, extração assíncrona e reenvio |
 | Professor acompanha/aprova orientação | Leitura de orientações/coorientações e participações; convites pelo orientador implementados | Aprovação/devolução integrada, com registro de decisão e autorização do orientador |
 | Coordenador ou orientador agenda após aprovação | CRUD de banca existe; leitura e convites por vínculo | Ação acadêmica de agendar para ambos; impedir agendamento prematuro, validar agenda/quórum/confirmações e notificar por fila |
@@ -41,7 +41,7 @@ Vincular/remover a conta no cadastro ou trocar a coordenação altera o acesso n
 | Catálogo e API pública de publicados/cursos/orientadores | Pendente; painel privado e CRUD não equivalem ao catálogo | Consulta pública sem autenticação, filtros de título/autor/orientador/curso/ano/palavras-chave e download autorizado |
 | Dashboard com indicadores | Contadores e próximas bancas por perfil | Gráficos por curso/orientador/ano, taxa de aprovação e tempo médio submissão–defesa |
 | IP/VPN institucional para ações restritas | Não implementado | Atender o requisito do enunciado; a retirada anterior pela equipe não equivale a atendimento |
-| Microsserviços independentes, Redis e filas | Principal Django/PostgreSQL executável; serviço separado somente relatado | Integrar identidade/dados/APIs/eventos, sessão/cache/locks, extração/notificações, idempotência, retentativas e testes distribuídos |
+| Microsserviços independentes, Redis e filas | Principal Django/PostgreSQL executável; serviço separado somente relatado | Validar consumo do JWT emitido pelo principal e integrar dados/APIs/eventos, sessão/cache/locks, extração/notificações, idempotência, retentativas e testes distribuídos |
 | Auditoria de quem/o quê/quando | Sessão, cadastro, CRUD, rascunhos e convites auditados | Consulta autorizada, mudanças de acesso no admin, retenção, diffs e correlação entre serviços |
 
 Não foram criados botões para processos ainda ausentes. O aluno continua limitado a alterações em RASCUNHO; professor/coordenador não recebem CRUD geral como substituto de aprovação, agendamento ou avaliação próprios.
@@ -58,4 +58,4 @@ Nenhuma migração de schema é necessária. Contas staff existentes não são p
 
 ## Validação
 
-Suíte completa: **110 testes aprovados**, incluindo seis cenários Chrome e doze regressões novas de autorização. Cobertura de staff sem acesso administrativo, vínculos sem grupo, grupo sem vínculo, revogação, coordenação por curso, participação em banca, convite do orientador e cadastro → vínculo pela interface → login docente. Os testes usam banco separado; esse resultado não valida os processos distribuídos ainda pendentes.
+Suíte completa após o merge: **115 testes aprovados**, incluindo seis cenários Chrome, doze regressões de autorização e cinco testes do emissor JWT. Cobertura de staff sem acesso administrativo, vínculos sem grupo, grupo sem vínculo, revogação, coordenação por curso, participação em banca, convite do orientador e cadastro → vínculo pela interface → login docente. Os testes usam banco separado; esse resultado não valida os processos distribuídos ainda pendentes.

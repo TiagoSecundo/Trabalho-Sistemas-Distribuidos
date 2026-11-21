@@ -1,6 +1,6 @@
 # Acompanhamento do plano de refatoração
 
-Revisão: **20/11/2026**. Base integrada local: `738df0c` (painéis e limpeza),
+Revisão: **21/11/2026**. Base integrada local: `738df0c` (painéis e limpeza), `3448d33` (emissor JWT do PR #4),
 com as atualizações de login, cadastro, vínculos e permissões presentes no workspace.
 Referências: [enunciado do trabalho](<Trabalho_SistemasDistribuidos_Monografias (1) (2).md>),
 plano original de 11/11, código atual e `docs/PENDENCIAS_ATUALIZADO.md` recebido da equipe.
@@ -26,8 +26,9 @@ nesta entrega. Não confundir uma função no serviço separado com fluxo integr
   A equipe havia retirado esse controle; ele continua ausente e passa a constar
   explicitamente como pendência de conformidade com o enunciado.
   `SecurityMiddleware`, CSRF e papéis não substituem a restrição de rede.
-- Integração do microserviço, identidade JWT e consistência de dados continuam
-  pendentes. O principal não emite JWT para o serviço separado.
+- O PR #4 adicionou um endpoint de emissão JWT com sessão, CSRF e papéis por
+  vínculo. Sem chave compartilhada configurada ele responde 503. Verificação no
+  microserviço, revogação, contratos e consistência de dados continuam pendentes.
 
 ## Entregas existentes — não recolocar como pendência
 
@@ -35,6 +36,8 @@ nesta entrega. Não confundir uma função no serviço separado com fluxo integr
 - `39d076d`, `fda173a`, integrados em `9d04dc0`, PR #2: allauth, papéis,
   consultas acadêmicas, rascunhos próprios, convites externos e auditoria.
 - `0178003`, integrado em `5f7857b`, PR #3: e-mail opcional e documentos da equipe.
+- `b019850`, integrado em `3448d33`, PR #4: emissor JWT local, dependência
+  SimpleJWT e rota `POST /api/usuarios/token-microservico/`.
 - `4515604`: painéis de Aluno, Professor, Coordenador e Administrador; navegação e logout
   para qualquer conta autenticada; estado orientativo para conta sem vínculo.
 - Busca, filtro por situação, paginação, contadores e próximas bancas dentro
@@ -63,7 +66,7 @@ nesta entrega. Não confundir uma função no serviço separado com fluxo integr
 | B01 / P0 — baseline e backup | Concluído | Histórico, fontes e integrações preservados; backup local mantido. |
 | B02 / P0 — configuração e legado | Concluído nesta revisão | Configuração ativa única, dependências e `.env` documentados; pacote alternativo, arquivos vazios, script/patch e documentos duplicados removidos; backup fora do Git. Migração de dados Equipe permanece em B06. |
 | B03 / P0 — decisões do domínio | Parcial | Vínculos e constraints implementados. Confirmar notas, quórum, composição de banca, correções, publicação e matriz entre serviços. |
-| B04 / P0 — autenticação e autorização | Parcial | Cadastro público com tela integrada, validação, conta/e-mail/auditoria atômicos e conta disponível na administração. Login do sistema/API unificado, e-mail opcional, logout POST/CSRF, sessão prioritária sobre Basic e acesso por perfil/objeto testados. Papéis acadêmicos agora vêm dos vínculos; `is_staff` não promove administrador. Faltam recuperação de senha completa, identidade JWT e IP/VPN institucional. |
+| B04 / P0 — autenticação e autorização | Parcial | Cadastro público com tela integrada, validação, conta/e-mail/auditoria atômicos e conta disponível na administração. Login do sistema/API unificado, e-mail opcional, logout POST/CSRF, sessão prioritária sobre Basic e acesso por perfil/objeto testados. Papéis acadêmicos agora vêm dos vínculos; `is_staff` não promove administrador. Emissor JWT local do PR #4 adicionado; faltam chave compartilhada no ambiente, validação/revogação no serviço, recuperação de senha completa e IP/VPN institucional. |
 | B05 / P0 — Aluno, Professor e Curso | CRUD administrativo concluído; integração pendente | Models, migrações e CRUDs testados. Campo Conta de acesso disponível em Aluno/Professor (HTML/API); coordenação definida no Curso, com efeito imediato e sem exigir grupo. Definir IDs compartilhados com o microserviço. |
 | B06 / P0 — Monografia e migração | Parcial | CRUD, rascunhos do dono e telas entregues. Mapear integrantes legados e definir fonte de verdade/sincronização entre o model principal e o microserviço. |
 | B07 / P0 — API REST | CRUD principal concluído; integração parcial | Contratos administrativos e acadêmicos disponíveis; páginas reutilizam consultas e serviços. Conflitos de rascunhos usam a mesma tradução do CRUD. Administração exige superusuário/grupo Administradores; leitura acadêmica inclui participação docente em banca. Faltam contrato/versionamento entre serviços e autorizações das ações ainda ausentes. |
@@ -76,7 +79,7 @@ nesta entrega. Não confundir uma função no serviço separado com fluxo integr
 | B14 / P1 — auditoria | Parcial | Eventos de sessão, CRUD, rascunhos e convites; HTML/API acadêmicos gravam na mesma transação. Falta consulta autorizada, retenção, padronização, mudanças de papéis/admin e correlação com simple-history/eventos externos. |
 | B15 / P1 — frontend | Perfis e funções existentes entregues; processo completo pendente | Quatro painéis, múltiplos papéis, busca/paginação, rascunhos e convites funcionam no navegador/celular. Professor tem orientações, filtro por vínculo e participações em bancas; conta pode ser vinculada pelas telas administrativas. Faltam telas de processo, catálogo e os cinco gráficos/indicadores do enunciado; dependem das APIs integradas. Não considerar o percurso acadêmico completo. |
 | B16 / P1 — PostgreSQL | Principal local concluído | Banco e suíte isolada validados; Compose/banco do microserviço ainda não executados nesta entrega. |
-| B17 / P0 — integração de microsserviços | Pendente | Integrar serviços independentes e suas APIs, autoridade de dados, JWT/claims/IDs, Redis (sessão, busca, lock, limites), filas/extração/notificações, entrega confiável, reconciliação, testes ponta a ponta e carga. |
+| B17 / P0 — integração de microsserviços | Pendente | Integrar serviços independentes e suas APIs, autoridade de dados, consumo/revogação de JWT e reconciliação de claims/IDs, Redis (sessão, busca, lock, limites), filas/extração/notificações, entrega confiável, reconciliação, testes ponta a ponta e carga. |
 
 ## Pendências críticas confirmadas no código
 
@@ -103,7 +106,7 @@ Cada caixa aberta abaixo representa trabalho restante. **P0** indica bloqueio de
 
 ### 2. Identidade, contas e controle de acesso — B04/B05/B07 / P0
 
-- [ ] Integrar o login allauth a um emissor confiável de identidade para os serviços. Definir claims/IDs, papéis coexistentes, validade, chaves, renovação e revogação; não usar `gerar_token` manual como autenticação final.
+- [ ] Validar a emissão JWT do principal no serviço consumidor com chave compartilhada configurada, claims/IDs e papéis coexistentes; definir rotação de chave, renovação e revogação ao desativar conta ou alterar vínculo. O emissor local do PR #4 já existe; `gerar_token` manual do microserviço não substitui esse fluxo.
 - [ ] Replicar nos serviços as restrições por aluno, orientador, curso e participação. Resolver como desativação da conta, troca de vínculo e perda da coordenação invalidam acessos já emitidos.
 - [ ] Revisar o serviço de monografias descrito no relatório: coordenador não pode consultar indiscriminadamente todos os cursos; aluno não pode forjar autoria/curso ou trocar vínculos sem a regra correspondente.
 - [ ] Completar e validar recuperação/troca de senha ponta a ponta, com telas integradas, entrega real de e-mail, expiração e uso único do link. O allauth fornece a base; o backend atual imprime e-mails no terminal.
@@ -255,7 +258,7 @@ Auditoria, autorização e testes acompanham cada entrega; a última etapa conso
 | Área | Evidência localizada | Limite atual |
 | --- | --- | --- |
 | API REST de monografias | `MonografiaViewSet`, CRUD e filtros por status, curso, aluno, orientador; busca por título, resumo e palavras-chave | Banco/modelo separados do principal; regras de acesso precisam ser revisadas |
-| Autenticação de chamadas | `JWTStatelessUserAuthentication` do SimpleJWT; claims `role`, `aluno_id`, `professor_id` | O comando `gerar_token` **simula** um emissor para desenvolvimento; não existe integração demonstrada com o login real do sistema principal |
+| Autenticação de chamadas | `JWTStatelessUserAuthentication` do SimpleJWT; claims `role`, `aluno_id`, `professor_id` | O principal agora tem emissor JWT ligado à sessão allauth; não há consumo/validação ponta a ponta demonstrados no microserviço. O comando `gerar_token` ainda é só desenvolvimento |
 | Upload de PDF | `POST /api/monografias/{id}/upload/`; extensão `.pdf`, assinatura `%PDF-`, tamanho máximo configurável e SHA-256 por partes | Não há endpoint específico de download privado; falta validar comportamento e permissões em execução |
 | Submissão | `POST /api/monografias/{id}/submeter/`; exige arquivo, atualiza estado/data, usa lock temporário no Redis e publica evento | Fluxo não está integrado ao principal; falta robustez diante de falha na publicação/concorrência |
 | Orientação | `POST /api/monografias/{id}/aprovar-orientador/` e `/solicitar-ajustes/`; compara o ID do orientador, registra estado e evento | O motivo dos ajustes é enviado no evento, mas não há campo persistido específico no model; testar ponta a ponta |
@@ -280,9 +283,10 @@ Auditoria, autorização e testes acompanham cada entrega; a última etapa conso
 
 O `docker-compose.yml` mapeia o serviço web para a **porta 8001 no host** (porta 8000 no contêiner). Isso permite executá-lo ao lado do sistema principal, normalmente acessado na porta 8000, **sem significar que os serviços já se comuniquem**.
 
-## Última validação do código e limites desta atualização
+## Validação do código e limites desta atualização
 
-Na revisão de perfis anterior a esta atualização documental, a suíte completa passou com **110 testes**, incluindo seis cenários Chrome,
+Após o merge do PR #4, a suíte completa passou com **115 testes**, incluindo
+seis cenários Chrome e cinco novos testes do emissor JWT,
 no banco isolado `test_curso_django_dev`, sem testes ignorados. Os doze novos
 casos de `usuarios/test_papeis.py` cobrem staff sem privilégio administrativo,
 Aluno/Professor, grupos isolados, administrador explícito, revogação de vínculos,
@@ -292,8 +296,8 @@ formulário administrativo → logout/login → painel docente, além de respons
 
 Esta atualização detalha o backlog; não implementa nem valida os itens abertos.
 Foi feita conferência documental com o enunciado, as rotas, os serviços e as
-configurações locais. Nenhuma nova execução da suíte foi necessária para a edição
-deste arquivo.
+configurações locais. A suíte foi repetida após integrar o JWT do PR #4; a
+edição final deste arquivo não altera o comportamento da aplicação.
 
 A suíte mantém login, cadastro, rascunhos, CSRF, auditoria/rollback, migrações e
 restrições dos CRUDs. O cenário de troca de conta usa professor marcado como
@@ -303,7 +307,7 @@ acadêmicos e a integração distribuída ainda pendentes.
 ## Decisões e itens externos à entrega
 
 IP/VPN foi retirado anteriormente pela equipe, mas é exigido no enunciado
-anexado. A restrição institucional permanece pendente e não é proteção ativa. Redis/RabbitMQ e JWT aparecem no relatório do serviço separado, porém
-não estão integrados ao principal. Extração de PDF, repositório público, testes
+anexado. A restrição institucional permanece pendente e não é proteção ativa. Redis/RabbitMQ aparecem no relatório do serviço separado, sem integração comprovada.
+O emissor JWT foi integrado ao principal, mas o consumo entre serviços não foi validado. Extração de PDF, repositório público, testes
 de carga e implantação produtiva continuam sem comprovação nesta cópia.
 O PDF original e os documentos de referência recebidos foram preservados.
