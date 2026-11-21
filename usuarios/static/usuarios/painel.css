@@ -1,0 +1,60 @@
+.perfil-page { padding-top: 1.8rem; padding-bottom: 2.5rem; }
+.perfil-nav { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.perfil-nav a { padding: .55rem 1rem; border: 1px solid var(--app-border); background: white; color: var(--app-primary-dark); border-radius: 999px; font-weight: 700; }
+.perfil-nav a[aria-current=page] { color: white; background: var(--app-primary-dark); border-color: var(--app-primary-dark); }
+.perfil-hero { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 2rem; background: #0f3d3a; color: white; border-radius: 20px; }
+.perfil-eyebrow { display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; margin-bottom: .6rem; }
+.perfil-hero .perfil-eyebrow { color: #99f6e4; }
+.perfil-hero h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -.04em; }
+.perfil-hero p { margin: .7rem 0 0; max-width: 42rem; color: #e2eeec; }
+.perfil-hero .perfil-meta { font-size: .8rem; color: #b4d6ce; }
+.perfil-primary { display: inline-block; flex-shrink: 0; color: #0f3d3a; background: #ccfbf1; padding: .8rem 1.1rem; border-radius: 10px; font-weight: 800; }
+.perfil-primary:hover { color: #0f3d3a; background: white; }
+.perfil-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin: 1.3rem 0; }
+.perfil-metrics article { padding: 1.25rem; border: 1px solid var(--app-border); border-radius: 14px; background: white; }
+.perfil-metrics span, .perfil-metrics small { display: block; font-size: .8rem; color: #526171; }
+.perfil-metrics strong { display: block; font-size: 2rem; margin: .35rem 0; letter-spacing: -.05em; }
+.perfil-columns { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 1.3rem; align-items: start; }
+.perfil-section { border: 1px solid var(--app-border); border-radius: 16px; background: white; padding: 1.5rem; min-width: 0; }
+.perfil-section h1 { font-weight: 800; font-size: 1.8rem; overflow-wrap: anywhere; }
+.perfil-section h2, .perfil-note h2 { font-size: 1.05rem; font-weight: 800; }
+.perfil-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.perfil-section-heading > span, .perfil-caption { font-size: .85rem; color: #526171; line-height: 1.65; }
+.perfil-search { display: flex; flex-wrap: wrap; align-items: end; gap: .7rem; margin: 1.25rem 0; }
+.perfil-search > div { flex: 1 1 11rem; min-width: 0; }
+.perfil-search label { display: block; font-size: .75rem; font-weight: 700; }
+.perfil-search input, .perfil-search select { width: 100%; padding: .6rem; min-height: 2.6rem; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: var(--app-text); }
+.perfil-search .btn { min-height: 2.6rem; }
+.perfil-work { padding: 1.25rem 0; border-top: 1px solid var(--app-border); }
+.perfil-work h3 { font-size: 1.05rem; font-weight: 800; margin: .8rem 0 .5rem; overflow-wrap: anywhere; }
+.perfil-work h3 a { color: var(--app-text); }
+.perfil-work p { color: #526171; font-size: .85rem; }
+.perfil-work-top { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.perfil-status { display: inline-block; font-size: .7rem; font-weight: 800; background: #e0f2f1; color: #115e59; border-radius: 6px; padding: .3rem .5rem; }
+.status-draft { background: #f1f5f9; color: #475569; }
+.perfil-course { font-size: .75rem; color: #526171; }
+.perfil-work-actions { display: flex; flex-wrap: wrap; gap: 1.2rem; font-size: .8rem; font-weight: 700; }
+.perfil-page a:not(.btn):not(.perfil-primary):not([aria-current=page]) { color: var(--app-primary-dark); }
+.perfil-empty { padding: 2.5rem 1rem; text-align: center; }
+.perfil-empty h3 { font-size: 1.15rem; font-weight: 800; }
+.perfil-empty p { color: #526171; max-width: 36rem; margin: .8rem auto; }
+.perfil-pagination { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .8rem; padding-top: 1rem; border-top: 1px solid var(--app-border); font-size: .8rem; }
+.perfil-aside { display: grid; gap: 1.3rem; }
+.perfil-agenda { padding: 1rem 0; border-top: 1px solid var(--app-border); }
+.perfil-agenda time { font-size: .75rem; font-weight: 800; color: var(--app-primary-dark); }
+.perfil-agenda h3 { font-size: .9rem; font-weight: 700; margin: .6rem 0; overflow-wrap: anywhere; }
+.perfil-agenda p, .perfil-agenda a { font-size: .8rem; }
+.perfil-note { background: #edf5f3; border: 1px solid #d4e4df; padding: 1.5rem; border-radius: 16px; }
+.perfil-note p { font-size: .85rem; line-height: 1.7; }
+.perfil-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; margin-bottom: 1.3rem; }
+.perfil-shortcuts a { display: flex; flex-direction: column; gap: .4rem; background: white; border: 1px solid var(--app-border); padding: 1rem; border-radius: 12px; font-size: .8rem; }
+.perfil-detail { padding: 2rem; }
+.perfil-detail h1 { margin-top: .8rem; }
+.perfil-banca { padding: 1.3rem 0; border-top: 1px solid var(--app-border); margin-top: 1rem; }
+.perfil-banca h3 { font-size: 1rem; margin: 0; }
+.perfil-participants { list-style: none; padding: 0; margin-top: 1rem; }
+.perfil-participants li { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .8rem 0; border-top: 1px solid #edf1f5; font-size: .85rem; }
+.perfil-participants span { display: block; color: #526171; font-size: .75rem; margin-top: .3rem; }
+.perfil-page input:focus-visible, .perfil-page select:focus-visible, .perfil-page textarea:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+@media (max-width: 991px) { .perfil-columns { grid-template-columns: 1fr; } .perfil-hero { align-items: flex-start; flex-direction: column; } .perfil-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 575px) { .perfil-page { padding-top: 1rem; } .perfil-hero, .perfil-section, .perfil-note { padding: 1.2rem; } .perfil-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; } .perfil-metrics article { padding: 1rem; } .perfil-metrics small { font-size: .7rem; } .perfil-search > div { flex-basis: 100%; } .perfil-shortcuts { grid-template-columns: 1fr; } .perfil-work-actions { gap: .8rem; } }

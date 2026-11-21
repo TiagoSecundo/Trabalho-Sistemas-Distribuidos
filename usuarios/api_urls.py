@@ -2,8 +2,8 @@ from django.urls import path
 from .api import (
     MinhaContaView, MinhasMonografiasView, RascunhoAlunoViewSet,
     EmitirConviteExternoView, ConfirmarConviteExternoView, 
-    TokenMicroservicoView,
 )
+from .jwt_api import TokenMicroservicoView
 
 urlpatterns = [
     path('token-microservico/', TokenMicroservicoView.as_view(), name='token-microservico',),

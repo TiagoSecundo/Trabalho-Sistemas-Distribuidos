@@ -1,0 +1,11 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}{% if editando %}Editar{% else %}Novo{% endif %} rascunho · AllTeam{% endblock %}
+{% block perfil_content %}
+<div class="crud-form-shell"><a class="back-link" href="{{ perfil.url }}">← Meus trabalhos</a><h1>{% if editando %}Editar{% else %}Novo{% endif %} rascunho</h1><p class="perfil-caption">Organize o tema, o resumo e a orientação do seu trabalho.</p>
+{% if erro %}<div class="alert alert-warning" role="alert">{{ erro }}</div>{% else %}
+<form method="post" class="perfil-section crud-form" data-crud-form>{% csrf_token %}{% include 'crud/feedback.html' %}{{ form.non_field_errors }}
+<p class="perfil-caption">Campos com * são obrigatórios. O trabalho será vinculado ao seu cadastro e curso.</p>
+{% for field in form %}<div class="form-group"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}<small id="{{ field.id_for_label }}_helptext" class="form-text text-muted">{{ field.help_text }}</small>{{ field.errors }}<div id="{{ field.id_for_label }}_api_error" data-error-for="{{ field.name }}" class="text-danger small"></div></div>{% endfor %}
+<div class="crud-actions"><button type="submit" class="btn app-cta-btn">Salvar rascunho</button><a href="{{ perfil.url }}" class="btn btn-outline-secondary">Cancelar</a></div></form>
+{% endif %}</div>{{ api_config|json_script:'crud-config' }}
+{% endblock %}

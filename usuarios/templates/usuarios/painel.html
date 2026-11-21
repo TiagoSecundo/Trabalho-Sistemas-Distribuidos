@@ -1,20 +1,75 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Painel do Usuário</title>
-</head>
-<body>
-    <h1>Painel do Usuário</h1>
-
-    <p>Bem-vindo, {{ usuario.username }}!</p>
-
-    <h2>Seus perfis:</h2>
-
-    {% for papel in papeis %}
-        <p>{{ papel }}</p>
-    {% empty %}
-        <p>Nenhum perfil encontrado.</p>
-    {% endfor %}
-</body>
-</html>
+{% extends 'usuarios/base.html' %}
+{% block title %}{% if perfil %}{{ perfil.papel }}{% else %}Minha conta{% endif %} · AllTeam{% endblock %}
+{% block perfil_content %}
+{% if perfil %}
+<header class="perfil-hero" data-perfil="{{ perfil.slug }}">
+    <div><span class="perfil-eyebrow">Área de {{ perfil.papel|lower }}</span>
+        <h1>{{ perfil.titulo }}</h1>
+        <p>Olá, {{ usuario.get_full_name|default:usuario.username }}. {{ perfil.descricao }}</p>
+        {% if aluno %}<p class="perfil-meta">{{ aluno.curso.nome }} · Matrícula {{ aluno.matricula }}</p>{% endif %}
+        {% if professor %}<p class="perfil-meta">{{ professor.departamento }} · {{ professor.area_pesquisa }}</p>{% endif %}
+        {% if cursos %}<p class="perfil-meta">{% for curso in cursos %}{{ curso.nome }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    </div>
+    {% if perfil.slug == 'aluno' %}<a class="perfil-primary" href="{% url 'usuarios:novo-rascunho' %}">+ Novo rascunho</a>{% endif %}
+    {% if perfil.slug == 'administrador' %}<a class="perfil-primary" href="{% url 'equipe:index' %}">Gerenciar cadastros</a>{% endif %}
+</header>
+<div class="perfil-metrics" aria-label="Resumo dos trabalhos deste perfil">
+    <article><span>Trabalhos</span><strong>{{ resumo.total }}</strong><small>Vinculados a este perfil</small></article>
+    <article><span>Rascunhos</span><strong>{{ resumo.rascunhos }}</strong><small>Em preparação</small></article>
+    <article><span>Bancas agendadas</span><strong>{{ total_bancas }}</strong><small>Próximas ou em andamento</small></article>
+    <article><span>Publicados</span><strong>{{ resumo.publicados }}</strong><small>Trabalhos publicados</small></article>
+</div>
+{% if cadastros %}
+<section class="perfil-shortcuts" aria-label="Gestão administrativa">
+    <a href="{% url 'equipe:index' %}?tipo=aluno"><strong>{{ cadastros.alunos }} alunos</strong><span>Consultar cadastros →</span></a>
+    <a href="{% url 'equipe:index' %}?tipo=professor"><strong>{{ cadastros.professores }} professores</strong><span>Consultar cadastros →</span></a>
+    <a href="{% url 'equipe:index' %}?tipo=curso"><strong>{{ cadastros.cursos }} cursos</strong><span>Consultar cadastros →</span></a>
+    {% if perms.auth.view_user or perms.auth.change_user %}<a href="{% url 'admin:auth_user_changelist' %}"><strong>Contas e acessos</strong><span>Administrar usuários →</span></a>{% endif %}
+</section>
+{% endif %}
+<div class="perfil-columns">
+<section class="perfil-section" aria-labelledby="titulo-trabalhos">
+    <div class="perfil-section-heading"><h2 id="titulo-trabalhos">{{ perfil.lista }}</h2><span>{{ pagina.paginator.count }} resultado{{ pagina.paginator.count|pluralize:"s" }}</span></div>
+    <form method="get" class="perfil-search" role="search">
+        <div><label for="busca-perfil">Buscar trabalho</label><input id="busca-perfil" type="search" name="q" value="{{ busca }}" placeholder="Título, aluno ou curso"></div>
+        <div><label for="estado-perfil">Situação</label><select id="estado-perfil" name="estado"><option value="">Todas as situações</option>{% for valor, rotulo in estados %}<option value="{{ valor }}" {% if valor == estado %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
+        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+        {% if busca or estado %}<a href="{{ perfil.url }}">Limpar</a>{% endif %}
+    </form>
+    <div class="perfil-work-list">
+        {% for trabalho in pagina %}
+        <article class="perfil-work">
+            <div class="perfil-work-top"><span class="perfil-status {% if trabalho.status_fluxo == 'RASCUNHO' %}status-draft{% endif %}">{{ trabalho.get_status_fluxo_display }}</span><span class="perfil-course">{{ trabalho.curso.nome }}</span></div>
+            <h3><a href="{% url 'usuarios:trabalho' trabalho.pk %}?perfil={{ perfil.slug }}">{{ trabalho.titulo }}</a></h3>
+            <p>{{ trabalho.aluno.nome }} <span aria-hidden="true">·</span> Orientação: {{ trabalho.orientador.nome }}</p>
+            <div class="perfil-work-actions">
+                <a href="{% url 'usuarios:trabalho' trabalho.pk %}?perfil={{ perfil.slug }}">Ver trabalho →</a>
+                {% if perfil.slug == 'aluno' and trabalho.status_fluxo == 'RASCUNHO' %}<a href="{% url 'usuarios:editar-rascunho' trabalho.pk %}">Editar rascunho</a>{% endif %}
+                {% if perfil.slug == 'administrador' %}<a href="{% url 'monografias:detalhes' trabalho.pk %}">Abrir na gestão</a>{% endif %}
+            </div>
+        </article>
+        {% empty %}
+        <div class="perfil-empty"><h3>{% if busca or estado %}Nenhum trabalho encontrado{% else %}Nenhum trabalho por aqui ainda{% endif %}</h3><p>{% if busca or estado %}Tente outro termo ou limpe os filtros.{% elif perfil.slug == 'aluno' %}Crie seu primeiro rascunho para começar a organizar o trabalho.{% else %}Os trabalhos aparecerão aqui quando estiverem vinculados a este perfil.{% endif %}</p></div>
+        {% endfor %}
+    </div>
+    {% if pagina.has_other_pages %}
+    <nav class="perfil-pagination" aria-label="Páginas de trabalhos">
+        {% if pagina.has_previous %}<a href="?q={{ busca|urlencode }}&amp;estado={{ estado|urlencode }}&amp;page={{ pagina.previous_page_number }}">← Anterior</a>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a href="?q={{ busca|urlencode }}&amp;estado={{ estado|urlencode }}&amp;page={{ pagina.next_page_number }}">Próxima →</a>{% endif %}
+    </nav>
+    {% endif %}
+</section>
+<aside class="perfil-aside">
+    <section class="perfil-section"><h2>Próximas bancas</h2><p class="perfil-caption">Até cinco bancas dos trabalhos deste perfil.</p>
+    {% for banca in proximas_bancas %}<article class="perfil-agenda"><time datetime="{{ banca.inicio|date:'c' }}">{{ banca.inicio|date:'d/m/Y · H:i' }}</time><h3>{{ banca.monografia.titulo }}</h3><p>{{ banca.get_modalidade_display }}{% if banca.local %} · {{ banca.local }}{% endif %}</p><a href="{% url 'usuarios:trabalho' banca.monografia_id %}?perfil={{ perfil.slug }}">Consultar banca →</a></article>{% empty %}<p class="perfil-caption">Não há bancas agendadas neste momento.</p>{% endfor %}
+    </section>
+    <section class="perfil-note"><h2>Seu acesso</h2><p>{% if perfil.slug == 'aluno' %}Você pode criar, editar e excluir seus rascunhos. Acompanhe aqui a situação de cada trabalho.{% elif perfil.slug == 'professor' %}Esta área reúne suas orientações e coorientações, com a situação de cada trabalho e suas bancas.{% elif perfil.slug == 'coordenador' %}Consulte os trabalhos dos cursos que coordena. Nos detalhes da banca, você pode emitir convites para membros externos quando a orientação estiver aprovada.{% else %}Use os cadastros para gerenciar alunos, professores e cursos. As monografias, bancas e avaliações continuam disponíveis na área de gestão.{% endif %}</p>
+    {% if perfil.slug == 'administrador' %}<a href="{% url 'monografias:index' %}">Monografias e bancas →</a>{% endif %}
+    <p class="perfil-caption">Submissão, aprovação e fechamento de resultados ainda não estão disponíveis nesta aplicação.</p></section>
+</aside>
+</div>
+{% else %}
+<div class="perfil-empty perfil-section"><span class="perfil-eyebrow">Minha conta</span><h1>Seu acesso acadêmico está em preparação</h1><p>Olá, {{ usuario.get_full_name|default:usuario.username }}. Sua conta está ativa, mas ainda não foi vinculada a um perfil acadêmico.</p><p>Solicite à administração o vínculo de aluno, professor ou coordenador. Depois, acesse este painel novamente.</p><a class="btn app-cta-btn" href="{% url 'usuarios:painel' %}">Verificar meu acesso</a></div>
+{% endif %}
+{% endblock %}

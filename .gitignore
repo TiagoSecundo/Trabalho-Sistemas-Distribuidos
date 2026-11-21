@@ -9,6 +9,7 @@ __pycache__/
 
 # Banco local
 db.sqlite3
+db.sqlite3.backup
 .postgres/
 media/
 
