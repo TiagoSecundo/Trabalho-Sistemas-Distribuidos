@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 import os
 from dotenv import load_dotenv
 
@@ -150,6 +151,13 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+}
+
+# Configuração JWT para comunicação com o microserviço
+SIMPLE_JWT = {
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': os.environ.get('MICROSERVICO_JWT_SIGNING_KEY', ''),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
 }
 
 AUTHENTICATION_BACKENDS = [
