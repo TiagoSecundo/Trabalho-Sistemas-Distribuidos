@@ -72,7 +72,7 @@
     </section>
     <section class="perfil-note"><h2>Seu acesso</h2><p>{% if perfil.slug == 'aluno' %}Você pode criar, editar e excluir seus rascunhos. Acompanhe aqui a situação de cada trabalho.{% elif perfil.slug == 'professor' %}Consulte suas orientações, coorientações e trabalhos em que participa da banca. Como orientador principal, você também pode emitir convites externos depois da aprovação da orientação.{% elif perfil.slug == 'coordenador' %}Consulte os trabalhos dos cursos que coordena. Nos detalhes da banca, você pode emitir convites para membros externos quando a orientação estiver aprovada.{% else %}Use os cadastros para gerenciar alunos, professores e cursos. Vincule a conta de acesso ao aluno ou professor para liberar seu painel. As monografias, bancas e avaliações continuam disponíveis na área de gestão.{% endif %}</p>
     {% if perfil.slug == 'administrador' %}<a href="{% url 'monografias:index' %}">Monografias e bancas →</a>{% endif %}
-    <p class="perfil-caption">Submissão, aprovação e fechamento de resultados ainda não estão disponíveis nesta aplicação.</p></section>
+    <p class="perfil-caption">Submissão e aprovação pelo orientador dependem da integração com o microserviço. Registro de avaliações e fechamento do resultado estão disponíveis nos detalhes da banca realizada.</p></section>
 </aside>
 </div>
 {% else %}

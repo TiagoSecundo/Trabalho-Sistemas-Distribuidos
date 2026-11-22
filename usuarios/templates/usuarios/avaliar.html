@@ -1,0 +1,24 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Minha avaliação · AllTeam{% endblock %}
+{% block perfil_content %}
+<a class="back-link" href="{% url 'usuarios:trabalho' participacao.banca.monografia_id %}?perfil=professor">← Voltar ao trabalho</a>
+<section class="perfil-section perfil-detail">
+    <span class="perfil-eyebrow">Avaliação da banca</span>
+    <h1>{{ participacao.banca.monografia.titulo }}</h1>
+    <p class="perfil-caption">{{ participacao.professor.nome }} · {{ participacao.get_papel_display }}</p>
+    <p class="perfil-caption">Informe sua nota, seu parecer e uma recomendação. A média mínima de aprovação é 6,0.</p>
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+        {% for campo in form %}
+        <div class="mb-3">
+            <label for="{{ campo.id_for_label }}" class="form-label">{{ campo.label }}</label>
+            {{ campo }}
+            {% if campo.errors %}<div class="text-danger">{{ campo.errors }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn app-cta-btn">Salvar minha avaliação</button>
+        <a href="{% url 'usuarios:trabalho' participacao.banca.monografia_id %}?perfil=professor" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</section>
+{% endblock %}

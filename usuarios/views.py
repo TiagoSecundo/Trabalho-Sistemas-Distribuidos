@@ -10,17 +10,21 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.http import require_http_methods, require_safe, require_POST
 
 from Curso_Django.interface import preparar_formulario
 from Curso_Django.services import OperacaoNaoPermitida
 from equipe.models import Aluno, Curso, Professor
-from monografias.models import Banca, Monografia, ParticipacaoBanca
+from monografias.models import Avaliacao, Banca, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .consultas import monografias_visiveis
-from .forms import ConfirmarConviteForm, RascunhoAlunoForm
+from .forms import AvaliacaoPropriaForm, ConfirmarConviteForm, RascunhoAlunoForm
 from .roles import obter_papeis, pode_convidar_para_banca
-from .services import confirmar_convite_externo, emitir_convite_externo, excluir_rascunho, exigir_aluno, salvar_rascunho
+from .services import (
+    calcular_resultado_banca, confirmar_convite_externo, emitir_convite_externo,
+    excluir_rascunho, exigir_aluno, finalizar_resultado_banca,
+    registrar_avaliacao_propria, registrar_defesa_realizada, salvar_rascunho,
+)
 
 
 PERFIS = {
@@ -102,7 +106,16 @@ def trabalho(request, pk):
     context = contexto_perfil(request, request.GET.get('perfil'))
     papel = context['perfil']['papel'] if request.GET.get('perfil') else None
     monografia = get_object_or_404(monografias_visiveis(request.user, papel), pk=pk)
-    bancas = monografia.bancas.prefetch_related('participacoes__professor', 'participacoes__membro_externo').order_by('-inicio')
+    bancas = list(monografia.bancas.prefetch_related(
+        'participacoes__professor', 'participacoes__membro_externo', 'participacoes__avaliacao',
+    ).order_by('-inicio'))
+    if monografia.status_fluxo in ('APROVADA', 'APROVADA_COM_RESSALVAS', 'REPROVADA'):
+        for banca in bancas:
+            if banca.status == 'REALIZADA':
+                try:
+                    banca.media_final, _ = calcular_resultado_banca(banca)
+                except ValidationError:
+                    banca.media_final = None
     context.update({
         'monografia': monografia, 'bancas': bancas,
         'pode_editar': 'Aluno' in context['papeis'] and monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo == 'RASCUNHO',
@@ -210,3 +223,54 @@ def confirmar_convite(request, pk):
             form.add_error(None, 'Convite inválido, expirado ou já confirmado. Solicite um novo código à coordenação.')
             codigo = 403
     return render(request, 'usuarios/confirmar_convite.html', {'form': form, 'confirmado': confirmado}, status=codigo)
+
+
+@never_cache
+@login_required
+@require_POST
+def realizar_defesa(request, pk):
+    banca = get_object_or_404(Banca, pk=pk)
+    try:
+        registrar_defesa_realizada(request.user, pk)
+        messages.success(request, 'Defesa registrada como realizada. Os titulares já podem avaliar.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=banca.monografia_id)
+
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def avaliar_participacao(request, pk):
+    participacao = get_object_or_404(
+        ParticipacaoBanca.objects.select_related('banca__monografia', 'professor'),
+        pk=pk, professor__usuario=request.user,
+    )
+    context = contexto_perfil(request, 'professor')
+    avaliacao = Avaliacao.objects.filter(participacao=participacao).first()
+    if avaliacao and avaliacao.finalizada_em:
+        messages.error(request, 'Esta avaliação já está finalizada.')
+        return redirect('usuarios:trabalho', pk=participacao.banca.monografia_id)
+    form = AvaliacaoPropriaForm(request.POST if request.method == 'POST' else None, instance=avaliacao)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            registrar_avaliacao_propria(request.user, pk, form.cleaned_data)
+            messages.success(request, 'Avaliação registrada com sucesso.')
+            return redirect('usuarios:trabalho', pk=participacao.banca.monografia_id)
+        except (OperacaoNaoPermitida, ValidationError) as exc:
+            form.add_error(None, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    context.update({'participacao': participacao, 'form': form})
+    return render(request, 'usuarios/avaliar.html', context)
+
+
+@never_cache
+@login_required
+@require_POST
+def finalizar_banca(request, pk):
+    banca = get_object_or_404(Banca, pk=pk)
+    try:
+        media, resultado = finalizar_resultado_banca(request.user, pk)
+        messages.success(request, f'Resultado finalizado: média {media} — {dict(Monografia.STATUS)[resultado]}.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=banca.monografia_id)

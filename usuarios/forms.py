@@ -3,6 +3,7 @@ from django import forms
 from django.db import transaction
 
 from monografias.forms import MonografiaForm
+from monografias.models import Avaliacao
 from .auditoria import registrar_acao
 
 
@@ -40,3 +41,17 @@ class ConfirmarConviteForm(forms.Form):
         widget=forms.PasswordInput(attrs={'autocomplete': 'off'}),
         help_text='Cole o código recebido da coordenação para confirmar sua participação.',
     )
+
+
+class AvaliacaoPropriaForm(forms.ModelForm):
+    """O avaliador não escolhe participante nem banca: vêm da sessão e da URL."""
+
+    class Meta:
+        model = Avaliacao
+        fields = ['nota', 'parecer', 'recomendacao']
+        labels = {'nota': 'Nota (0 a 10)', 'parecer': 'Parecer', 'recomendacao': 'Recomendação'}
+        widgets = {
+            'nota': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '10', 'step': '0.01'}),
+            'parecer': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'recomendacao': forms.Select(attrs={'class': 'form-select'}),
+        }
