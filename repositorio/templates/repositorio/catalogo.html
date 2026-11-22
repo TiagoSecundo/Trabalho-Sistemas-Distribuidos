@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Repositório de monografias · AllTeam{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'repositorio/repositorio.css' %}"><script src="{% static 'repositorio/catalogo.js' %}" defer></script>{% endblock %}
+{% block content %}
+<div class="repo-page" data-catalogo data-api="{% url 'repositorio-api:monografias' %}" data-cursos="{% url 'repositorio-api:cursos' %}" data-orientadores="{% url 'repositorio-api:orientadores' %}">
+  <header class="repo-hero"><div class="container">
+    <span class="repo-eyebrow">REPOSITÓRIO ACADÊMICO · ACESSO ABERTO</span>
+    <h1>Conhecimento para<br><em>ir mais longe.</em></h1>
+    <p>Explore monografias, descubra pesquisas e consulte os trabalhos publicados pela nossa comunidade.</p>
+    <form id="busca-repositorio" role="search" method="get">
+      <label class="repo-sr-only" for="busca">Pesquisar no repositório</label>
+      <div class="repo-search"><span aria-hidden="true">⌕</span><input id="busca" name="busca" type="search" maxlength="200" placeholder="Busque um tema, título ou trecho do trabalho"><button type="submit">Pesquisar <span aria-hidden="true">→</span></button></div>
+      <p class="repo-search-hint">Pesquise nos dados do trabalho e no conteúdo dos PDFs já indexados.</p>
+    </form>
+  </div></header>
+  <div class="container repo-layout">
+    <aside><details class="repo-filters" open><summary>Refinar pesquisa <span aria-hidden="true">＋</span></summary><div class="repo-filter-body">
+      <p>Combine os filtros para encontrar o que você procura.</p>
+      <div data-opcoes-erro class="repo-error" role="alert" hidden><p>Não foi possível carregar todos os cursos e orientadores.</p><button type="button" class="repo-btn" data-recarregar-opcoes>Recarregar opções</button></div>
+      <div class="repo-field"><label for="titulo">Título</label><input id="titulo" name="titulo" maxlength="200" form="busca-repositorio" placeholder="Parte do título"></div>
+      <div class="repo-field"><label for="autor">Autor</label><input id="autor" name="autor" maxlength="200" form="busca-repositorio" placeholder="Nome do estudante"></div>
+      <div class="repo-field"><label for="curso">Curso</label><select id="curso" name="curso" form="busca-repositorio"><option value="">Todos os cursos</option></select></div>
+      <div class="repo-field"><label for="orientador">Orientador</label><select id="orientador" name="orientador" form="busca-repositorio"><option value="">Todos os orientadores</option></select></div>
+      <div class="repo-field"><label for="ano_defesa">Ano da defesa</label><input id="ano_defesa" name="ano_defesa" type="number" min="1900" max="9998" form="busca-repositorio" placeholder="Ex.: 2026"></div>
+      <div class="repo-field"><label for="palavras_chave">Palavras-chave</label><input id="palavras_chave" name="palavras_chave" maxlength="300" form="busca-repositorio" placeholder="Ex.: redes, segurança" aria-describedby="ajuda-palavras"><small id="ajuda-palavras">Separe por vírgulas para combinar termos.</small></div>
+      <button class="repo-btn repo-btn-primary repo-block" type="submit" form="busca-repositorio">Aplicar filtros</button>
+      <button class="repo-clear repo-block" type="button" data-limpar>Limpar filtros</button>
+    </div></details><p class="repo-access-note"><strong>Leitura livre.</strong> Você pode consultar e baixar os trabalhos sem criar uma conta.</p></aside>
+    <section aria-labelledby="resultados-titulo" class="repo-results">
+      <div class="repo-results-top"><div><span class="repo-eyebrow">PRODUÇÃO ACADÊMICA</span><h2 id="resultados-titulo" tabindex="-1">Explore os trabalhos</h2><p id="contagem" role="status" aria-live="polite">Carregando o acervo…</p></div>
+        <div class="repo-field repo-order"><label for="ordering">Ordenar por</label><select id="ordering" name="ordering" form="busca-repositorio"><option value="-data_defesa">Defesas mais recentes</option><option value="data_defesa">Defesas mais antigas</option><option value="titulo">Título: A–Z</option><option value="-titulo">Título: Z–A</option><option value="-data_publicacao">Publicações recentes</option></select></div>
+      </div>
+      <div class="repo-active" data-filtros-ativos aria-label="Filtros aplicados"></div>
+      <div class="repo-error" data-erro role="alert" hidden><p data-mensagem-erro></p><button type="button" class="repo-btn" data-tentar>Tentar novamente</button></div>
+      <div data-resultados aria-busy="true"><div class="repo-empty">Buscando trabalhos publicados…</div></div>
+      <nav class="repo-pagination" aria-label="Paginação dos trabalhos" hidden><button type="button" data-anterior class="repo-btn">← Anterior</button><span data-pagina></span><button type="button" data-proxima class="repo-btn">Próxima →</button></nav>
+      <noscript><p>Ative o JavaScript para pesquisar nesta tela ou consulte a <a href="{% url 'repositorio-api:monografias' %}">API pública de monografias</a>.</p></noscript>
+    </section>
+  </div>
+</div>
+{% endblock %}

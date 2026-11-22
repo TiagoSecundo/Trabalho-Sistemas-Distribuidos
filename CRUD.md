@@ -339,13 +339,59 @@ Essas guardas precisam entrar nos serviços dos processos B09–B11. As classes
 `IsOrientadorMonografia`, `IsCoordenadorMonografia` e `IsProfessorAvaliador`
 existem, mas ainda não estão conectadas a endpoints de aprovação/avaliação.
 
-Submissão, aprovação/devolução, realização, fechamento de resultado e
-publicação continuam sem ações. Os campos de PDF/hash e a tabela
-DocumentoComplementar estão no schema, mas upload, download privado,
-verificação de conteúdo, tamanho, SHA-256 em streaming e versões não estão
-implementados. O serializer de monografia retorna `sha256` como leitura;
+As ações acadêmicas B09–B11 implementam submissão, aprovação/devolução,
+realização e fechamento do resultado. B12 acrescenta documentos privados,
+validação de PDF de até 50 MB, SHA-256, histórico de versões, conferência de
+correção/termo e publicação automática. O serializer de monografia retorna `sha256` como leitura;
 `arquivo_pdf`, `token_hash` e `expira_em` da participação não são campos dos
-CRUDs administrativos. Não há endpoints públicos de catálogo.
+CRUDs administrativos. O catálogo público usa endpoints separados em `/api/publico/`.
+
+### Documentos e publicação B12 — 22/11/2026
+
+| Método e rota | Operação |
+| --- | --- |
+| `GET/POST /api/usuarios/monografias/{id}/documentos/` | Listar documentos ou enviar multipart com `tipo` e `arquivo` |
+| `POST /api/usuarios/monografias/{id}/documentos/{documento_id}/conferir/` | Aceitar com `decisao=aceitar` e `confirmacao=true`, ou rejeitar com `decisao=rejeitar` e `motivo` obrigatório |
+| `GET /api/usuarios/monografias/{id}/documentos/{documento_id}/arquivo/` | Baixar documento com autorização e hash conferidos |
+
+Aluno envia termo/correção/comprovante; orientador confere correções; coordenador
+do curso ou Administrador confere visualmente a assinatura do termo. Ata é
+opcional e pode ser enviada pela orientação, coordenação ou administração.
+Somente resultado B11 aprovado permite iniciar o fluxo. A última conferência
+necessária publica automaticamente; não há endpoint de liberação manual.
+
+`Publicacao.documento_final` e `Publicacao.sha256` identificam o PDF final;
+`Monografia.sha256` preserva o hash original do B09. Termos e versões antigas
+permanecem privados. Registros publicados não admitem alteração/exclusão no
+CRUD ou Admin. A tela correspondente é `/usuarios/trabalhos/{id}/documentos/`.
+Veja [arquitetura e testes B12](docs/DESENVOLVIMENTO.md#b12--documentos-correções-e-publicação-automática-22112026).
+
+### Repositório e API públicos B13 — 22/11/2026
+
+`GET /api/publico/monografias/` lista somente publicações B12 consistentes.
+Filtros combináveis: `titulo`, `autor`, `orientador` (ID), `curso` (ID),
+`ano_defesa` e `palavras_chave` (termos separados por vírgulas). `busca` inclui
+metadados e texto do PDF indexado. O ano vem da banca realizada no fuso local.
+
+`ordering` aceita `-data_defesa`, `data_defesa`, `titulo`, `-titulo` e
+`-data_publicacao`. `page` começa em 1; `page_size` é 12 por padrão e no máximo
+50. Resposta: `count`, `page`, `pages`, `next`, `previous` e `results`.
+Parâmetros inválidos/desconhecidos/repetidos recebem 400.
+
+Detalhe: `GET /api/publico/monografias/{id}/`. Arquivo final:
+`GET /api/publico/monografias/{id}/arquivo/`, inline por padrão ou download com
+`?download=1`. `{id}` é o ID da monografia no principal. Trabalhos sem
+publicação B12 válida retornam 404. Arquivo com integridade inválida retorna 409.
+Rotas não aceitam escrita, mesmo para administradores (405).
+
+`GET /api/publico/cursos/` e `GET /api/publico/orientadores/` retornam listas de
+`{id, nome}` vinculadas a publicações disponíveis. Respostas não incluem
+e-mails, matrículas, contas, avaliações, termos ou caminhos privados.
+
+Interface: `/repositorio/` e `/repositorio/{id}/`, sem login. Busca e detalhe
+consomem a API via JavaScript; o detalhe também tem HTML inicial utilizável.
+A indexação do PDF final ocorre fora da requisição, em worker RabbitMQ com
+outbox, retentativas e DLQ. Veja [contratos e operação B13](docs/DESENVOLVIMENTO.md#b13--repositório-api-pública-e-indexação-por-fila-22112026).
 
 ## Migrações e testes
 
@@ -437,8 +483,9 @@ são as mesmas da API e ainda dependem de aprovação não implementada no princ
 
 A navbar oferece Meu painel e saída para todos os autenticados. Os acessos de
 gestão continuam exclusivos do papel Administrador. Os templates allauth existentes foram
-preservados, com confirmação de e-mail opcional. Submissão, aprovação, avaliação,
-publicação e catálogo continuam dependentes de B09–B13/B17.
+preservados, com confirmação de e-mail opcional. Submissão, aprovação, avaliação
+e publicação estão nos fluxos B09–B12; catálogo e indexação final por fila estão
+no B13. Notificações e demais integrações assíncronas permanecem no B17/P0-C.
 
-Consulte o [guia de integração](DESENVOLVIMENTO.md) para ampliar os recursos
-e o [backlog](PENDENCIAS.md) para os fluxos que ainda faltam.
+Consulte o [guia de integração](docs/DESENVOLVIMENTO.md) para ampliar os recursos
+e o [backlog](docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md) para os fluxos que ainda faltam.

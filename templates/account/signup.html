@@ -8,23 +8,20 @@
 <section class="container conta-page" aria-labelledby="cadastro-titulo">
     <div class="conta-layout">
         <aside class="conta-intro">
-            <span class="section-label">AllTeam Monografias</span>
-            <h1 id="cadastro-titulo">Crie sua conta</h1>
-            <p>Um acesso para acompanhar seus trabalhos, orientações e bancas.</p>
+            <span class="conta-kicker">Comece por aqui</span>
+            <h1 id="cadastro-titulo">Um espaço para sua jornada acadêmica.</h1>
+            <p>Crie sua conta para acompanhar trabalhos, orientações e bancas em um só lugar.</p>
             <div class="conta-note">
-                <h2>Como funciona</h2>
-                <ol>
-                    <li>Preencha seus dados de acesso.</li>
-                    <li>Depois de salvar, você será direcionado ao seu painel.</li>
-                    <li>A administração vincula sua conta ao perfil acadêmico correspondente.</li>
-                </ol>
+                <span class="conta-note-symbol" aria-hidden="true">✦</span>
+                <div><strong>Simples de começar</strong><span>Após o cadastro, você será levado ao seu painel. A administração vincula sua conta ao perfil acadêmico correspondente.</span></div>
             </div>
-            <p>Já tem uma conta? <a href="{{ login_url }}">Entrar no sistema</a></p>
+            <p class="conta-switch">Já tem uma conta? <a href="{{ login_url }}">Entrar no sistema <span aria-hidden="true">↗</span></a></p>
         </aside>
-        <div class="crud-card conta-card">
-            <h2>Seus dados de acesso</h2>
-            <p class="text-muted">Todos os campos são obrigatórios.</p>
-            <form method="post" action="{% url 'account_signup' %}" class="crud-form" novalidate>
+        <div class="conta-card">
+            <span class="conta-card-kicker">Cadastro na plataforma</span>
+            <h2>Crie sua conta</h2>
+            <p class="conta-card-subtitle">Preencha os dados abaixo para começar.</p>
+            <form method="post" action="{% url 'account_signup' %}" class="crud-form conta-form" novalidate>
                 {% csrf_token %}
                 {{ redirect_field }}
                 {% if form.errors %}
@@ -43,8 +40,9 @@
                 </div>
                 {% endif %}
                 {% endfor %}
-                <button type="submit" class="btn app-cta-btn conta-submit">Criar minha conta</button>
+                <button type="submit" class="btn app-cta-btn conta-submit">Criar minha conta <span aria-hidden="true">↗</span></button>
             </form>
+            <p class="conta-card-footer">Já tem acesso? <a href="{{ login_url }}">Entrar na conta</a></p>
         </div>
     </div>
 </section>

@@ -23,6 +23,7 @@ from .integracao_microservico import (
 )
 from .forms import AvaliacaoExternaForm, AvaliacaoPropriaForm, ConfirmarConviteForm, RascunhoAlunoForm, PropostaBancaForm, ParticipantePropostaForm
 from .roles import obter_papeis, pode_convidar_para_banca
+from .publicacao import pode_consultar_documentos
 from .agendamento import (
     adicionar_participante, cancelar_proposta, propor_banca, responder_convite_interno, retirar_participante,
 )
@@ -116,15 +117,17 @@ def trabalho(request, pk):
     bancas = list(monografia.bancas.prefetch_related(
         'participacoes__professor', 'participacoes__membro_externo', 'participacoes__avaliacao',
     ).order_by('-inicio'))
-    if monografia.status_fluxo in ('APROVADA', 'APROVADA_COM_RESSALVAS', 'REPROVADA'):
+    if monografia.status_fluxo in ('APROVADA', 'APROVADA_COM_RESSALVAS', 'CORRECOES_ENTREGUES', 'PUBLICADA', 'REPROVADA'):
         for banca in bancas:
             if banca.status == 'REALIZADA':
                 try:
-                    banca.media_final, _ = calcular_resultado_banca(banca)
+                    banca.media_final, resultado = calcular_resultado_banca(banca)
+                    banca.resultado_final = dict(Monografia.STATUS)[resultado]
                 except ValidationError:
                     banca.media_final = None
     context.update({
         'monografia': monografia, 'bancas': bancas,
+        'pode_consultar_documentos': pode_consultar_documentos(request.user, monografia),
         'pode_editar': 'Aluno' in context['papeis'] and monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo in ('RASCUNHO', 'AJUSTES_SOLICITADOS'),
         'pode_submeter_pdf': monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo in ('RASCUNHO', 'AJUSTES_SOLICITADOS'),
         'pode_analisar_submissao': monografia.orientador.usuario_id == request.user.pk and monografia.status_fluxo in ('SUBMETIDA', 'EM_ANALISE_ORIENTADOR'),

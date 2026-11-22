@@ -8,14 +8,14 @@ from .models import Banca, Monografia, ParticipacaoBanca
 class MonografiaService(ServicoCRUD):
     @classmethod
     def validar_alteracao(cls, instance):
-        if instance.status_fluxo not in ('RASCUNHO', 'AJUSTES_SOLICITADOS'):
+        if instance.status_fluxo not in ('RASCUNHO', 'AJUSTES_SOLICITADOS') or hasattr(instance, 'publicacao'):
             raise OperacaoNaoPermitida('Somente rascunhos e trabalhos devolvidos para ajustes podem ser editados.')
 
     @classmethod
     @transaction.atomic
     def excluir(cls, instance):
         instance = type(instance).objects.select_for_update().get(pk=instance.pk)
-        if instance.status_fluxo != 'RASCUNHO' or instance.microservico_id is not None:
+        if instance.status_fluxo != 'RASCUNHO' or instance.microservico_id is not None or hasattr(instance, 'publicacao'):
             raise OperacaoNaoPermitida('Monografias ja submetidas nao podem ser excluidas.')
         return super().excluir(instance)
 
@@ -55,6 +55,15 @@ class BancaService(ServicoCRUD):
 
 
 class AvaliacaoService(ServicoCRUD):
+    @classmethod
+    @transaction.atomic
+    def criar(cls, model, dados):
+        banca = Banca.objects.select_for_update(of=('self',)).get(pk=dados['participacao'].banca_id)
+        monografia = Monografia.objects.select_for_update().get(pk=banca.monografia_id)
+        if monografia.status_fluxo in ('APROVADA', 'APROVADA_COM_RESSALVAS', 'CORRECOES_ENTREGUES', 'REPROVADA', 'PUBLICADA') or banca.participacoes.filter(avaliacao__finalizada_em__isnull=False).exists():
+            raise OperacaoNaoPermitida('Não é permitido acrescentar avaliações após o fechamento da banca.')
+        return super().criar(model, dados)
+
     @classmethod
     def validar_alteracao(cls, instance):
         if instance.finalizada_em:

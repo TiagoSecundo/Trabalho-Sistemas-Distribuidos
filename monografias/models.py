@@ -5,6 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 from equipe.models import Aluno, Curso, Professor
+from .arquivos import ArmazenamentoPrivado, caminho_documento
 
 
 class Monografia(models.Model):
@@ -174,17 +175,47 @@ class Avaliacao(models.Model):
 
 
 class DocumentoComplementar(models.Model):
-    TIPOS = (('ATA', 'Ata'), ('TERMO_AUTORIZACAO', 'Termo de autorização'), ('COMPROVANTE_CORRECAO', 'Comprovante de correção'), ('VERSAO_CORRIGIDA', 'Versão corrigida'))
+    TIPOS = (('ATA', 'Ata'), ('TERMO_AUTORIZACAO', 'Termo de autorização'), ('COMPROVANTE_CORRECAO', 'Comprovante de correção'), ('VERSAO_CORRIGIDA', 'Versão corrigida'), ('ORIGINAL_APROVADA', 'Cópia da submissão aprovada'))
+    DECISOES = (('PENDENTE', 'Aguardando conferência'), ('ACEITO', 'Conferido e aceito'), ('REJEITADO', 'Rejeitado'), ('RECEBIDO', 'Recebido'))
 
     monografia = models.ForeignKey(Monografia, on_delete=models.PROTECT, related_name='documentos')
     tipo = models.CharField(max_length=25, choices=TIPOS)
-    arquivo = models.FileField(upload_to='documentos/', validators=[FileExtensionValidator(['pdf'])])
+    arquivo = models.FileField(upload_to=caminho_documento, storage=ArmazenamentoPrivado(), validators=[FileExtensionValidator(['pdf'])])
     sha256 = models.CharField(max_length=64, blank=True, editable=False)
     enviado_em = models.DateTimeField(auto_now_add=True)
     enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='documentos_enviados')
+    nome_original = models.CharField(max_length=255, blank=True)
+    tamanho_bytes = models.PositiveBigIntegerField(default=0, editable=False)
+    origem_microservico_id = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    # Legado não é implicitamente validado nem escolhido como versão corrente.
+    vigente = models.BooleanField(default=False, editable=False)
+    decisao = models.CharField(max_length=10, choices=DECISOES, default='PENDENTE', editable=False)
+    conferido_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='documentos_conferidos', editable=False)
+    conferido_em = models.DateTimeField(null=True, blank=True, editable=False)
+    motivo = models.TextField(blank=True, editable=False)
+
+    class Meta:
+        ordering = ['-enviado_em', '-pk']
+        constraints = [models.UniqueConstraint(fields=['monografia', 'tipo'], condition=models.Q(vigente=True), name='documento_vigente_unico_por_tipo')]
 
     def __str__(self):
         return f'{self.get_tipo_display()} — {self.monografia}'
+
+
+class Publicacao(models.Model):
+    """Registro único e imutável da decisão e dos arquivos efetivamente publicados."""
+    monografia = models.OneToOneField(Monografia, on_delete=models.PROTECT, related_name='publicacao')
+    banca = models.ForeignKey(Banca, on_delete=models.PROTECT, related_name='publicacoes')
+    documento_final = models.ForeignKey(DocumentoComplementar, on_delete=models.PROTECT, related_name='publicacoes_como_final')
+    termo = models.ForeignKey(DocumentoComplementar, on_delete=models.PROTECT, related_name='publicacoes_como_termo')
+    publicado_em = models.DateTimeField(default=timezone.now, editable=False)
+    publicado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='publicacoes_academicas', editable=False)
+    sha256 = models.CharField(max_length=64, editable=False)
+    resultado_banca = models.CharField(max_length=30, editable=False)
+    media_banca = models.DecimalField(max_digits=4, decimal_places=2, editable=False)
+
+    def __str__(self):
+        return f'Publicação — {self.monografia}'
 
 
 class HistoricoAcao(models.Model):

@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
   <div class="container">
     <a class="navbar-brand app-brand" href="{% url 'index' %}">
-      <span class="brand-dot" aria-hidden="true"></span> AllTeam <small>Monografias</small>
+      <span class="brand-mark" aria-hidden="true">A</span><span class="brand-name">AllTeam <small>Monografias</small></span>
     </a>
     <button class="navbar-toggler app-toggler" type="button" data-toggle="collapse" data-target="#mainNavbar"
       aria-controls="mainNavbar" aria-expanded="false" aria-label="Alternar navegação">
@@ -10,6 +10,7 @@
     <div class="collapse navbar-collapse" id="mainNavbar">
       <ul class="navbar-nav ml-auto align-items-lg-center">
         <li class="nav-item"><a class="nav-link app-link" href="{% url 'index' %}" {% if request.path == '/' %}aria-current="page"{% endif %}>Início</a></li>
+        <li class="nav-item"><a class="nav-link app-link" href="{% url 'repositorio:catalogo' %}" {% if request.resolver_match.namespace == 'repositorio' %}aria-current="page"{% endif %}>Repositório</a></li>
         {% if user.is_authenticated %}
         <li class="nav-item"><a class="nav-link app-link" href="{% url 'usuarios:painel' %}" {% if request.resolver_match.namespace == 'usuarios' %}aria-current="page"{% endif %}>Meu painel</a></li>
         {% if acesso_administrativo %}

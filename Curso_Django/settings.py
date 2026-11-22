@@ -41,10 +41,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'rest_framework',
     'home', 
     'equipe',
     'monografias',
+    'repositorio',
     'allauth',
     'allauth.account',
     'usuarios.apps.UsuariosConfig',
@@ -201,3 +203,12 @@ X_FRAME_OPTIONS = 'DENY'
 MICROSERVICO_API_URL = os.environ.get('MICROSERVICO_API_URL', 'http://127.0.0.1:8001/api/')
 MICROSERVICO_TIMEOUT = int(os.environ.get('MICROSERVICO_TIMEOUT', '60'))
 MICROSERVICO_MAX_UPLOAD_MB = int(os.environ.get('MICROSERVICO_MAX_UPLOAD_MB', '50'))
+
+# B12: MEDIA_ROOT é privado; não exponha esse diretório no proxy ou nas URLs.
+DOCUMENTOS_MAX_UPLOAD_MB = 50
+
+# B13: o processo web grava a outbox; apenas o worker acessa o broker.
+RABBITMQ_URL = os.environ.get('RABBITMQ_URL', '')
+REPOSITORIO_FILA = os.environ.get('REPOSITORIO_FILA', 'allteam.repositorio.indexar')
+REPOSITORIO_MAX_TEXTO = 1000000
+REPOSITORIO_MAX_TENTATIVAS = 3

@@ -1,0 +1,66 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Documentos e publicação · AllTeam{% endblock %}
+{% block perfil_content %}
+<a class="back-link" href="{% url 'usuarios:trabalho' monografia.pk %}">← Voltar ao trabalho</a>
+<section class="perfil-section">
+    <span class="perfil-status">{{ monografia.get_status_fluxo_display }}</span>
+    <h1>Documentos e publicação</h1>
+    <p>{{ monografia.titulo }}</p>
+    {% if erro %}<div class="alert alert-danger" role="alert">{{ erro }}</div>{% endif %}
+    {% if publicacao %}
+    <div class="alert alert-success" role="status">
+        <strong>Publicado em {{ publicacao.publicado_em|date:'d/m/Y H:i' }}.</strong>
+        O arquivo final e o termo foram fixados. Os documentos não podem mais ser alterados.
+    </div>
+    <p><a class="btn app-cta-btn" href="{% url 'usuarios:documento-arquivo' monografia.pk publicacao.documento_final_id %}">Baixar PDF final</a></p>
+    <p class="perfil-caption">Esta área mantém os documentos privados. <a href="{% url 'repositorio:detalhe' monografia.pk %}">Ver o trabalho no repositório público</a>.</p>
+    {% else %}
+    <p>A publicação acontece automaticamente quando todos os requisitos abaixo forem atendidos:</p>
+    <ol>
+        <li>Aprovação final da banca, com todas as avaliações encerradas.</li>
+        <li>Se houver ressalvas, versão corrigida enviada pelo aluno e aceita pelo orientador.</li>
+        <li>Termo enviado pelo aluno, com assinatura conferida pela coordenação do curso ou administração.</li>
+    </ol>
+    <p class="perfil-caption">Anexar o termo não confirma sua assinatura. A pessoa responsável deve abrir o PDF e registrar a conferência. Ata e comprovante de correção são opcionais.</p>
+    {% endif %}
+    {% if tipos_envio %}
+    <form method="post" enctype="multipart/form-data" class="crud-form mt-4">
+        {% csrf_token %}
+        <h2>Enviar documento</h2>
+        <div class="form-group"><label for="tipo-documento">Tipo de documento</label><select id="tipo-documento" name="tipo" required>{% for valor, rotulo in tipos_envio %}<option value="{{ valor }}">{{ rotulo }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="arquivo-documento">PDF (até {{ limite_mb }} MB, sem senha)</label><input type="file" id="arquivo-documento" name="arquivo" accept=".pdf,application/pdf" required aria-describedby="aviso-versao"></div>
+        <p id="aviso-versao" class="perfil-caption">Um novo envio substitui a versão vigente do mesmo tipo e exige nova conferência. O arquivo anterior fica preservado no histórico privado.</p>
+        <button class="btn app-cta-btn" type="submit">Enviar documento</button>
+    </form>
+    {% endif %}
+</section>
+<section class="perfil-section mt-4" aria-labelledby="historico-documentos">
+    <h2 id="historico-documentos">Documentos e histórico de versões</h2>
+    {% for documento in documentos %}
+    <article class="perfil-banca">
+        <div class="perfil-work-top"><h3>{{ documento.get_tipo_display }}</h3><span class="perfil-status">{% if documento.vigente %}{{ documento.get_decisao_display }}{% else %}Versão anterior{% endif %}</span></div>
+        <p style="overflow-wrap:anywhere">{{ documento.nome_original }} · {{ documento.tamanho_bytes|filesizeformat }}</p>
+        <p class="perfil-caption">Enviado por {{ documento.enviado_por.get_username }} em {{ documento.enviado_em|date:'d/m/Y H:i' }}.</p>
+        {% if documento.conferido_em %}<p class="perfil-caption">{{ documento.get_decisao_display }} por {{ documento.conferido_por.get_username }} em {{ documento.conferido_em|date:'d/m/Y H:i' }}.</p>{% endif %}
+        {% if documento.motivo %}<p><strong>Motivo da decisão:</strong> {{ documento.motivo }}</p>{% endif %}
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'usuarios:documento-arquivo' monografia.pk documento.pk %}">Baixar documento para consulta</a>
+        <details class="mt-2"><summary>Identificação e integridade</summary><p class="perfil-caption">Documento {{ documento.pk }} · SHA-256</p><code style="overflow-wrap:anywhere">{{ documento.sha256 }}</code></details>
+        {% if documento.pode_conferir %}
+        <form method="post" action="{% url 'usuarios:conferir-documento' monografia.pk documento.pk %}" class="mt-3">
+            {% csrf_token %}<input type="hidden" name="decisao" value="aceitar">
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="confirmacao-{{ documento.pk }}" name="confirmacao" required><label class="form-check-label" for="confirmacao-{{ documento.pk }}">{% if documento.tipo == 'TERMO_AUTORIZACAO' %}Li o termo e conferi a assinatura do aluno no documento.{% else %}Li esta versão e confirmei o atendimento às correções exigidas pela banca.{% endif %}</label></div>
+            <p class="perfil-caption mt-2">Ao aceitar o último requisito, a publicação será automática.</p>
+            <button class="btn app-cta-btn" type="submit">{% if documento.tipo == 'TERMO_AUTORIZACAO' %}Confirmar assinatura do termo{% else %}Aceitar versão corrigida{% endif %}</button>
+        </form>
+        <details class="mt-3"><summary>Rejeitar documento e solicitar novo envio</summary>
+            <form method="post" action="{% url 'usuarios:conferir-documento' monografia.pk documento.pk %}" class="crud-form mt-2">
+                {% csrf_token %}<input type="hidden" name="decisao" value="rejeitar">
+                <label for="motivo-{{ documento.pk }}">Motivo da rejeição</label><textarea id="motivo-{{ documento.pk }}" name="motivo" rows="3" maxlength="2000" required></textarea>
+                <button class="btn btn-outline-danger mt-2" type="submit">Rejeitar documento</button>
+            </form>
+        </details>
+        {% endif %}
+    </article>
+    {% empty %}<p class="perfil-caption">Nenhum documento de publicação foi enviado. Os envios ficam disponíveis após a aprovação final da banca.</p>{% endfor %}
+</section>
+{% endblock %}
