@@ -63,7 +63,8 @@ class ParticipacaoBancaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['banca'].queryset = Banca.objects.select_related('monografia')
+        if 'banca' in self.fields:
+            self.fields['banca'].queryset = Banca.objects.select_related('monografia')
 
 
 class AvaliacaoForm(forms.ModelForm):
@@ -72,7 +73,7 @@ class AvaliacaoForm(forms.ModelForm):
         fields = ['participacao', 'nota', 'parecer', 'recomendacao']
         labels = {'participacao': 'Participante da banca', 'recomendacao': 'Recomendação'}
         widgets = {'parecer': forms.Textarea(attrs={'rows': 5}), 'nota': forms.NumberInput(attrs={'min': 0, 'max': 10, 'step': '0.01'})}
-        help_texts = {'nota': 'Nota de 0 a 10. O resultado final da defesa ainda não é calculado.'}
+        help_texts = {'nota': 'Nota de 0 a 10. O resultado é calculado no fechamento da banca, após todas as avaliações titulares.'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

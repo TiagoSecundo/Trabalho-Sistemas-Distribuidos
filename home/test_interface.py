@@ -88,6 +88,8 @@ class InterfaceTests(TestCase):
         response = self.client.post('/monografias/bancas/adicionar/', payload)
         self.assertTrue(response.context['form'].errors)
         payload['link'] = 'https://example.com/reuniao'
+        self.monografia.status_fluxo = 'APROVADA_ORIENTADOR'
+        self.monografia.save(update_fields=['status_fluxo'])
         self.assertEqual(self.client.post('/monografias/bancas/adicionar/', payload).status_code, 302)
         self.assertEqual(Banca.objects.get().inicio, inicio)
 

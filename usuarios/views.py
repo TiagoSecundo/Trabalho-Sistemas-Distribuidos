@@ -10,17 +10,24 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.http import require_http_methods, require_safe, require_POST
 
 from Curso_Django.interface import preparar_formulario
 from Curso_Django.services import OperacaoNaoPermitida
 from equipe.models import Aluno, Curso, Professor
-from monografias.models import Banca, Monografia, ParticipacaoBanca
+from monografias.models import Avaliacao, Banca, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .consultas import monografias_visiveis
-from .forms import ConfirmarConviteForm, RascunhoAlunoForm
+from .forms import AvaliacaoPropriaForm, ConfirmarConviteForm, RascunhoAlunoForm, PropostaBancaForm, ParticipantePropostaForm
 from .roles import obter_papeis, pode_convidar_para_banca
-from .services import confirmar_convite_externo, emitir_convite_externo, excluir_rascunho, exigir_aluno, salvar_rascunho
+from .agendamento import (
+    adicionar_participante, cancelar_proposta, propor_banca, responder_convite_interno, retirar_participante,
+)
+from .services import (
+    calcular_resultado_banca, confirmar_convite_externo, emitir_convite_externo,
+    excluir_rascunho, exigir_aluno, finalizar_resultado_banca,
+    registrar_avaliacao_propria, registrar_defesa_realizada, salvar_rascunho,
+)
 
 
 PERFIS = {
@@ -54,14 +61,14 @@ def painel(request, perfil=None):
     trabalhos = monografias_visiveis(request.user, ativo['papel'])
     if ativo['papel'] == 'Professor':
         context['participacoes'] = ParticipacaoBanca.objects.filter(
-            professor__usuario=request.user, banca__status__in=['AGENDADA', 'REALIZADA'],
+            professor__usuario=request.user, banca__status__in=['PENDENTE', 'AGENDADA', 'REALIZADA'],
         ).select_related('banca__monografia').order_by('-banca__inicio', '-pk')[:5]
         vinculo = request.GET.get('vinculo', '')
         if vinculo == 'orientacoes':
             trabalhos = trabalhos.filter(Q(orientador__usuario=request.user) | Q(coorientador__usuario=request.user))
         elif vinculo == 'bancas':
             trabalhos = trabalhos.filter(bancas__participacoes__professor__usuario=request.user,
-                                         bancas__status__in=['AGENDADA', 'REALIZADA']).distinct()
+                                         bancas__status__in=['PENDENTE', 'AGENDADA', 'REALIZADA']).distinct()
         else:
             vinculo = ''
         context['vinculo'] = vinculo
@@ -102,12 +109,26 @@ def trabalho(request, pk):
     context = contexto_perfil(request, request.GET.get('perfil'))
     papel = context['perfil']['papel'] if request.GET.get('perfil') else None
     monografia = get_object_or_404(monografias_visiveis(request.user, papel), pk=pk)
-    bancas = monografia.bancas.prefetch_related('participacoes__professor', 'participacoes__membro_externo').order_by('-inicio')
+    bancas = list(monografia.bancas.prefetch_related(
+        'participacoes__professor', 'participacoes__membro_externo', 'participacoes__avaliacao',
+    ).order_by('-inicio'))
+    if monografia.status_fluxo in ('APROVADA', 'APROVADA_COM_RESSALVAS', 'REPROVADA'):
+        for banca in bancas:
+            if banca.status == 'REALIZADA':
+                try:
+                    banca.media_final, _ = calcular_resultado_banca(banca)
+                except ValidationError:
+                    banca.media_final = None
     context.update({
         'monografia': monografia, 'bancas': bancas,
         'pode_editar': 'Aluno' in context['papeis'] and monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo == 'RASCUNHO',
         'pode_convidar': pode_convidar_para_banca(request.user, monografia),
         'convite_liberado': monografia.status_fluxo in ('APROVADA_ORIENTADOR', 'BANCA_AGENDADA'),
+        'pode_propor_banca': (
+            pode_convidar_para_banca(request.user, monografia)
+            and monografia.status_fluxo == 'APROVADA_ORIENTADOR'
+            and not monografia.bancas.filter(status__in=['PENDENTE', 'AGENDADA']).exists()
+        ),
     })
     return render(request, 'usuarios/trabalho.html', context)
 
@@ -202,11 +223,159 @@ def confirmar_convite(request, pk):
     form = ConfirmarConviteForm(request.POST if request.method == 'POST' else None)
     confirmado = False
     codigo = 200
+    recusado = False
     if request.method == 'POST' and form.is_valid():
         try:
-            confirmar_convite_externo(pk, form.cleaned_data['token'])
-            confirmado = True
+            acao = request.POST.get('acao', 'confirmar')
+            if acao not in ('confirmar', 'recusar'):
+                raise ValidationError('Escolha uma resposta válida.')
+            confirmar_convite_externo(pk, form.cleaned_data['token'], aceitar=acao == 'confirmar')
+            confirmado = acao == 'confirmar'
+            recusado = acao == 'recusar'
         except (PermissionDenied, Http404):
-            form.add_error(None, 'Convite inválido, expirado ou já confirmado. Solicite um novo código à coordenação.')
+            form.add_error(None, 'Convite inválido, expirado ou já respondido. Solicite um novo código à coordenação.')
             codigo = 403
-    return render(request, 'usuarios/confirmar_convite.html', {'form': form, 'confirmado': confirmado}, status=codigo)
+        except ValidationError as exc:
+            form.add_error(None, ' '.join(exc.messages))
+            codigo = 400
+        except OperacaoNaoPermitida as exc:
+            form.add_error(None, str(exc))
+            codigo = 409
+    return render(request, 'usuarios/confirmar_convite.html', {'form': form, 'confirmado': confirmado, 'recusado': recusado}, status=codigo)
+
+
+@never_cache
+@login_required
+@require_POST
+def realizar_defesa(request, pk):
+    banca = get_object_or_404(Banca, pk=pk)
+    try:
+        registrar_defesa_realizada(request.user, pk)
+        messages.success(request, 'Defesa registrada como realizada. Os titulares já podem avaliar.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=banca.monografia_id)
+
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def avaliar_participacao(request, pk):
+    participacao = get_object_or_404(
+        ParticipacaoBanca.objects.select_related('banca__monografia', 'professor'),
+        pk=pk, professor__usuario=request.user,
+    )
+    context = contexto_perfil(request, 'professor')
+    avaliacao = Avaliacao.objects.filter(participacao=participacao).first()
+    if avaliacao and avaliacao.finalizada_em:
+        messages.error(request, 'Esta avaliação já está finalizada.')
+        return redirect('usuarios:trabalho', pk=participacao.banca.monografia_id)
+    form = AvaliacaoPropriaForm(request.POST if request.method == 'POST' else None, instance=avaliacao)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            registrar_avaliacao_propria(request.user, pk, form.cleaned_data)
+            messages.success(request, 'Avaliação registrada com sucesso.')
+            return redirect('usuarios:trabalho', pk=participacao.banca.monografia_id)
+        except (OperacaoNaoPermitida, ValidationError) as exc:
+            form.add_error(None, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    context.update({'participacao': participacao, 'form': form})
+    return render(request, 'usuarios/avaliar.html', context)
+
+
+@never_cache
+@login_required
+@require_POST
+def finalizar_banca(request, pk):
+    banca = get_object_or_404(Banca, pk=pk)
+    try:
+        media, resultado = finalizar_resultado_banca(request.user, pk)
+        messages.success(request, f'Resultado finalizado: média {media} — {dict(Monografia.STATUS)[resultado]}.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=banca.monografia_id)
+
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def propor_banca_view(request, pk):
+    monografia = get_object_or_404(Monografia, pk=pk)
+    if not pode_convidar_para_banca(request.user, monografia):
+        raise PermissionDenied
+    context = contexto_perfil(request)
+    form = PropostaBancaForm(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            banca = propor_banca(request.user, pk, form.cleaned_data)
+            messages.success(request, 'Proposta criada. Adicione os participantes e aguarde as confirmações.')
+            return redirect('usuarios:adicionar-participante', pk=banca.pk)
+        except (OperacaoNaoPermitida, ValidationError, IntegrityError) as exc:
+            form.add_error(None, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    context.update({'form': form, 'monografia': monografia})
+    return render(request, 'usuarios/propor_banca.html', context)
+
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def adicionar_participante_view(request, pk):
+    banca = get_object_or_404(Banca.objects.select_related('monografia'), pk=pk)
+    if not pode_convidar_para_banca(request.user, banca.monografia):
+        raise PermissionDenied
+    if banca.status != 'PENDENTE':
+        return redirect('usuarios:trabalho', pk=banca.monografia_id)
+    context = contexto_perfil(request)
+    form = ParticipantePropostaForm(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            adicionar_participante(request.user, pk, form.cleaned_data)
+            messages.success(request, 'Participante incluído na proposta.')
+            return redirect('usuarios:trabalho', pk=banca.monografia_id)
+        except (OperacaoNaoPermitida, ValidationError, IntegrityError) as exc:
+            form.add_error(None, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    context.update({'form': form, 'banca': banca})
+    return render(request, 'usuarios/adicionar_participante.html', context)
+
+
+@never_cache
+@login_required
+@require_POST
+def responder_convite_interno_view(request, pk):
+    participacao = get_object_or_404(ParticipacaoBanca, pk=pk)
+    acao = request.POST.get('acao')
+    if acao not in ('confirmar', 'recusar'):
+        messages.error(request, 'Resposta inválida.')
+        return redirect('usuarios:trabalho', pk=participacao.banca.monografia_id)
+    try:
+        agendada = responder_convite_interno(request.user, pk, acao == 'confirmar')
+        messages.success(request, 'Banca agendada após todas as confirmações.' if agendada else 'Resposta registrada.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=participacao.banca.monografia_id)
+
+
+@never_cache
+@login_required
+@require_POST
+def retirar_participante_view(request, pk):
+    participacao = get_object_or_404(ParticipacaoBanca, pk=pk)
+    trabalho_pk = participacao.banca.monografia_id
+    try:
+        retirar_participante(request.user, pk)
+        messages.success(request, 'Participante retirado. É possível convidar um substituto.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=trabalho_pk)
+
+
+@never_cache
+@login_required
+@require_POST
+def cancelar_proposta_view(request, pk):
+    banca = get_object_or_404(Banca, pk=pk)
+    try:
+        cancelar_proposta(request.user, pk)
+        messages.success(request, 'Proposta cancelada. Você já pode criar outra proposta.')
+    except (OperacaoNaoPermitida, ValidationError) as exc:
+        messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+    return redirect('usuarios:trabalho', pk=banca.monografia_id)

@@ -39,7 +39,7 @@ class PerfisInterfaceTests(TestCase):
         cls.outro_trabalho = Monografia.objects.create(titulo='Trabalho privado de outro curso', resumo='Privado', aluno=cls.outro_aluno, curso=cls.outro_curso, orientador=cls.outro_professor)
         cls.coordenado = Monografia.objects.create(titulo='Somente coordenação', resumo='Resumo', aluno=cls.aluno, curso=cls.curso, orientador=cls.outro_professor)
         cls.coorientado = Monografia.objects.create(titulo='Coorientação', resumo='Resumo', aluno=cls.outro_aluno, curso=cls.outro_curso, orientador=cls.outro_professor, coorientador=cls.professor)
-        cls.banca = Banca.objects.create(monografia=cls.trabalho, inicio=timezone.now()+timedelta(days=10), fim=timezone.now()+timedelta(days=10, hours=1), local='Sala 1')
+        cls.banca = Banca.objects.create(monografia=cls.trabalho, inicio=timezone.now()+timedelta(days=10), fim=timezone.now()+timedelta(days=10, hours=1), local='Sala 1', status='AGENDADA')
         cls.externo = MembroExterno.objects.create(nome='Pessoa Externa', email='externo@example.com', instituicao='Instituição Parceira')
         cls.participacao = ParticipacaoBanca.objects.create(banca=cls.banca, membro_externo=cls.externo)
 
@@ -191,7 +191,7 @@ class PerfisInterfaceTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 403)
         self.entrar(self.prof_user)
         self.assertEqual(self.client.post(url).status_code, 400)
-        outra_banca = Banca.objects.create(monografia=self.outro_trabalho, inicio=self.banca.inicio, fim=self.banca.fim, local='Sala 2')
+        outra_banca = Banca.objects.create(monografia=self.outro_trabalho, inicio=self.banca.inicio, fim=self.banca.fim, local='Sala 2', status='AGENDADA')
         outra = ParticipacaoBanca.objects.create(banca=outra_banca, membro_externo=self.externo)
         self.assertEqual(self.client.get(reverse('usuarios:emitir-convite', args=[outra.pk])).status_code, 404)
 

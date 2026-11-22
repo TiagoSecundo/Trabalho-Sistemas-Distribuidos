@@ -20,7 +20,7 @@ RECURSOS = {
         'titulo': 'Bancas', 'singular': 'banca', 'api': 'banca',
         'form': BancaForm, 'serializer': BancaSerializer, 'queryset': Banca.objects.select_related('monografia'),
         'descricao': 'Organize os horários, locais e modalidades das defesas.',
-        'ajuda': 'Após cadastrar a banca, inclua seus participantes. Este cadastro ainda não verifica disponibilidade nem confirma convites.',
+        'ajuda': 'A banca começa como proposta pendente. Após aprovação do orientador, inclua os participantes e aguarde as confirmações sem conflitos de horário.',
         'colunas': [('monografia_titulo', 'Monografia'), ('inicio', 'Início'), ('modalidade_descricao', 'Modalidade'), ('status_descricao', 'Situação')],
         'campos': [('monografia_titulo', 'Monografia'), ('inicio', 'Início'), ('fim', 'Término'), ('modalidade_descricao', 'Modalidade'), ('local', 'Local'), ('link', 'Link da reunião'), ('status_descricao', 'Situação')],
     },

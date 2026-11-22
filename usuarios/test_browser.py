@@ -35,7 +35,7 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         self.aluno = Aluno.objects.create(usuario=self.aluno_user, nome='Lucas Aluno', email=self.aluno_user.email, matricula='2026001', curso=self.curso)
         # Estado preparado para testar o convite; aprovação não faz parte deste fluxo.
         self.trabalho = Monografia.objects.create(titulo='Gestão de monografias com Django', resumo='Estudo de uma aplicação acadêmica integrada.', palavras_chave=['Django', 'Educação'], aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
-        banca = Banca.objects.create(monografia=self.trabalho, inicio=timezone.now()+timedelta(days=7), fim=timezone.now()+timedelta(days=7, hours=1), local='Sala de defesas')
+        banca = Banca.objects.create(monografia=self.trabalho, inicio=timezone.now()+timedelta(days=7), fim=timezone.now()+timedelta(days=7, hours=1), local='Sala de defesas', status='AGENDADA')
         externo = MembroExterno.objects.create(nome='Bruno Externo', email='externo@browser.example', instituicao='Instituto Parceiro')
         self.participacao = ParticipacaoBanca.objects.create(banca=banca, membro_externo=externo)
         self.playwright = sync_playwright().start()

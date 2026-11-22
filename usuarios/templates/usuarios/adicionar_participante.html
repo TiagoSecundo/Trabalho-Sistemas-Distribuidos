@@ -1,0 +1,13 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Convidar participante · AllTeam{% endblock %}
+{% block perfil_content %}
+<a class="back-link" href="{% url 'usuarios:trabalho' banca.monografia_id %}">← Voltar ao trabalho</a>
+<section class="crud-form-shell perfil-section">
+  <span class="perfil-eyebrow">Banca pendente</span><h1>Incluir participante</h1>
+  <p>{{ banca.monografia.titulo }}</p><p class="perfil-caption">Selecione um professor interno OU um membro externo cadastrado.</p>
+  <form method="post" class="crud-form">{% csrf_token %}{{ form.non_field_errors }}
+    {% for field in form %}<div class="form-group"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}<small class="form-text text-muted">{{ field.help_text }}</small></div>{% endfor %}
+    <button class="btn app-cta-btn" type="submit">Incluir participante</button>
+  </form>
+</section>
+{% endblock %}
