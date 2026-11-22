@@ -18,6 +18,8 @@ urlpatterns = [
     path('bancas/<int:pk>/realizar/', views.realizar_defesa, name='realizar-defesa'),
     path('bancas/<int:pk>/finalizar/', views.finalizar_banca, name='finalizar-banca'),
     path('participacoes/<int:pk>/avaliar/', views.avaliar_participacao, name='avaliar-participacao'),
+    path('participacoes/<int:pk>/avaliacao-externa/emitir/', views.emitir_codigo_avaliacao_externa_view, name='emitir-avaliacao-externa'),
+    path('participacoes/<int:pk>/avaliacao-externa/', views.avaliacao_externa_view, name='avaliacao-externa'),
     path('convites/<int:pk>/emitir/', views.emitir_convite, name='emitir-convite'),
     path('convites/<int:pk>/', views.confirmar_convite, name='confirmar-convite'),
 ]

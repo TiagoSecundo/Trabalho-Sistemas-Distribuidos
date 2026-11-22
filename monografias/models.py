@@ -120,6 +120,9 @@ class ParticipacaoBanca(models.Model):
     confirmado_em = models.DateTimeField(null=True, blank=True, editable=False)
     token_hash = models.CharField(max_length=64, blank=True, editable=False)
     expira_em = models.DateTimeField(null=True, blank=True, editable=False)
+    # Código de avaliação separado do código de confirmação do convite.
+    avaliacao_token_hash = models.CharField(max_length=64, blank=True, editable=False)
+    avaliacao_expira_em = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ['pk']

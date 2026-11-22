@@ -57,6 +57,15 @@ class AvaliacaoPropriaForm(forms.ModelForm):
         }
 
 
+class AvaliacaoExternaForm(AvaliacaoPropriaForm):
+    codigo = forms.CharField(
+        label='Código de avaliação recebido da coordenação',
+        max_length=512, strip=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'off'}),
+        help_text='O código é individual e usado somente uma vez. Não é o código do convite.',
+    )
+
+
 class PropostaBancaForm(BancaForm):
     class Meta(BancaForm.Meta):
         fields = ['inicio', 'fim', 'modalidade', 'local', 'link']

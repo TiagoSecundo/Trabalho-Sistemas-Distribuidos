@@ -5,6 +5,7 @@ from .api import (
 )
 from .jwt_api import TokenMicroservicoView
 from .avaliacoes_api import RegistrarDefesaView, MinhaAvaliacaoView, FinalizarBancaView
+from .avaliacao_externa_api import EmitirCodigoAvaliacaoExternaView, RegistrarAvaliacaoExternaView
 from .agendamento_api import (
     ProporBancaView, AdicionarParticipanteView,
     ResponderConviteInternoView, RemoverParticipanteView, CancelarPropostaView,
@@ -19,6 +20,8 @@ urlpatterns = [
     path('bancas/<int:pk>/realizar/', RegistrarDefesaView.as_view(), name='api-realizar-banca'),
     path('bancas/<int:pk>/finalizar/', FinalizarBancaView.as_view(), name='api-finalizar-banca'),
     path('participacoes/<int:pk>/avaliacao/', MinhaAvaliacaoView.as_view(), name='api-minha-avaliacao'),
+    path('participacoes/<int:pk>/avaliacao-externa/emitir/', EmitirCodigoAvaliacaoExternaView.as_view(), name='api-emitir-avaliacao-externa'),
+    path('participacoes/<int:pk>/avaliacao-externa/', RegistrarAvaliacaoExternaView.as_view(), name='api-avaliacao-externa'),
     path('token-microservico/', TokenMicroservicoView.as_view(), name='token-microservico'),
     path('me/', MinhaContaView.as_view(), name='me'),
     path('monografias/', MinhasMonografiasView.as_view(), name='minhas-monografias'),
