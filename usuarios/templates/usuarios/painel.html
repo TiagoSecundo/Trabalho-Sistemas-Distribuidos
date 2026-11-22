@@ -2,6 +2,7 @@
 {% block title %}{% if perfil %}{{ perfil.papel }}{% else %}Minha conta{% endif %} · AllTeam{% endblock %}
 {% block perfil_content %}
 {% if perfil %}
+<div class="perfil-dashboard">
 <header class="perfil-hero" data-perfil="{{ perfil.slug }}">
     <div><span class="perfil-eyebrow">Área de {{ perfil.papel|lower }}</span>
         <h1>{{ perfil.titulo }}</h1>
@@ -13,14 +14,23 @@
     {% if perfil.slug == 'aluno' %}<a class="perfil-primary" href="{% url 'usuarios:novo-rascunho' %}">+ Novo rascunho</a>{% endif %}
     {% if perfil.slug == 'administrador' %}<a class="perfil-primary" href="{% url 'equipe:index' %}">Gerenciar cadastros</a>{% endif %}
 </header>
-<div class="perfil-metrics" aria-label="Resumo dos trabalhos deste perfil">
-    <article><span>Trabalhos</span><strong>{{ resumo.total }}</strong><small>Vinculados a este perfil</small></article>
-    <article><span>Rascunhos</span><strong>{{ resumo.rascunhos }}</strong><small>Em preparação</small></article>
-    <article><span>Bancas agendadas</span><strong>{{ total_bancas }}</strong><small>Próximas ou em andamento</small></article>
-    <article><span>Publicados</span><strong>{{ resumo.publicados }}</strong><small>Trabalhos publicados</small></article>
-</div>
+<nav class="painel-jump" aria-label="Navegar pelo painel">
+    <a href="#visao-geral">{% include 'ui/icon.html' with nome='grid' %} Visão geral</a>
+    <a href="#meus-trabalhos">{% include 'ui/icon.html' with nome='book' %} Trabalhos <span>{{ resumo.total }}</span></a>
+    <a href="#agenda-painel">{% include 'ui/icon.html' with nome='calendar' %} Agenda <span>{{ total_bancas }}</span></a>
+    {% if cadastros %}<a href="#gestao-painel">{% include 'ui/icon.html' with nome='users' %} Cadastros</a>{% endif %}
+</nav>
+<section id="visao-geral" class="painel-overview" aria-labelledby="titulo-visao-geral">
+    <div class="painel-label-row"><h2 id="titulo-visao-geral">Seu panorama</h2><p>Um resumo dos trabalhos vinculados a este perfil.</p></div>
+    <div class="perfil-metrics" aria-label="Resumo dos trabalhos deste perfil">
+        <article class="metric-total"><a href="{{ perfil.url }}{% if vinculo %}?vinculo={{ vinculo|urlencode }}{% endif %}#meus-trabalhos"><span class="metric-top">Todos os trabalhos {% include 'ui/icon.html' with nome='book' %}</span><strong>{{ resumo.total }}</strong><small>Consultar trabalhos <span aria-hidden="true">↗</span></small></a></article>
+        <article><a href="{{ perfil.url }}?estado=RASCUNHO{% if vinculo %}&amp;vinculo={{ vinculo|urlencode }}{% endif %}#meus-trabalhos"><span class="metric-top">Rascunhos {% include 'ui/icon.html' with nome='file' %}</span><strong>{{ resumo.rascunhos }}</strong><small>Em preparação <span aria-hidden="true">↗</span></small></a></article>
+        <article><a href="#agenda-painel"><span class="metric-top">Bancas agendadas {% include 'ui/icon.html' with nome='calendar' %}</span><strong>{{ total_bancas }}</strong><small>Consultar agenda <span aria-hidden="true">↗</span></small></a></article>
+        <article><a href="{{ perfil.url }}?estado=PUBLICADA{% if vinculo %}&amp;vinculo={{ vinculo|urlencode }}{% endif %}#meus-trabalhos"><span class="metric-top">Publicados {% include 'ui/icon.html' with nome='check' %}</span><strong>{{ resumo.publicados }}</strong><small>Trabalhos publicados <span aria-hidden="true">↗</span></small></a></article>
+    </div>
+</section>
 {% if cadastros %}
-<section class="perfil-shortcuts" aria-label="Gestão administrativa">
+<section id="gestao-painel" class="perfil-shortcuts" aria-label="Gestão administrativa">
     <a href="{% url 'equipe:index' %}?tipo=aluno"><strong>{{ cadastros.alunos }} alunos</strong><span>Consultar cadastros →</span></a>
     <a href="{% url 'equipe:index' %}?tipo=professor"><strong>{{ cadastros.professores }} professores</strong><span>Consultar cadastros →</span></a>
     <a href="{% url 'equipe:index' %}?tipo=curso"><strong>{{ cadastros.cursos }} cursos</strong><span>Consultar cadastros →</span></a>
@@ -28,21 +38,25 @@
 </section>
 {% endif %}
 <div class="perfil-columns">
-<section class="perfil-section" aria-labelledby="titulo-trabalhos">
-    <div class="perfil-section-heading"><h2 id="titulo-trabalhos">{{ perfil.lista }}</h2><span>{{ pagina.paginator.count }} resultado{{ pagina.paginator.count|pluralize:"s" }}</span></div>
+<section id="meus-trabalhos" class="perfil-section painel-work-section" aria-labelledby="titulo-trabalhos">
+    <div class="perfil-section-heading"><div><span class="painel-kicker">ACOMPANHAMENTO</span><h2 id="titulo-trabalhos">{{ perfil.lista }}</h2></div><span class="painel-result-count">{{ pagina.paginator.count }} resultado{{ pagina.paginator.count|pluralize:"s" }}</span></div>
+    <p class="perfil-caption painel-section-intro">Consulte a situação e o próximo passo de cada trabalho.</p>
     <form method="get" class="perfil-search" role="search">
         <div><label for="busca-perfil">Buscar trabalho</label><input id="busca-perfil" type="search" name="q" value="{{ busca }}" placeholder="Título, aluno ou curso"></div>
         <div><label for="estado-perfil">Situação</label><select id="estado-perfil" name="estado"><option value="">Todas as situações</option>{% for valor, rotulo in estados %}<option value="{{ valor }}" {% if valor == estado %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
-        {% if perfil.slug == 'professor' %}<div><label for="vinculo-perfil">Meu vínculo</label><select id="vinculo-perfil" name="vinculo"><option value="">Todos os vínculos</option value="orientacoes" {% if vinculo == 'orientacoes' %}selected{% endif %}>Orientações e coorientações</option><option value="bancas" {% if vinculo == 'bancas' %}selected{% endif %}>Participações em bancas</option></select></div>{% endif %}
-        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+        {% if perfil.slug == 'professor' %}<div><label for="vinculo-perfil">Meu vínculo</label><select id="vinculo-perfil" name="vinculo"><option value="">Todos os vínculos</option><option value="orientacoes" {% if vinculo == 'orientacoes' %}selected{% endif %}>Orientações e coorientações</option><option value="bancas" {% if vinculo == 'bancas' %}selected{% endif %}>Participações em bancas</option></select></div>{% endif %}
+        <button class="btn painel-filter-button" type="submit">{% include 'ui/icon.html' with nome='filter' %} Filtrar</button>
         {% if busca or estado or vinculo %}<a href="{{ perfil.url }}">Limpar</a>{% endif %}
     </form>
+    {% if busca or estado or vinculo %}<div class="painel-applied" aria-label="Filtros aplicados"><span>Exibindo:</span>{% if busca %}<strong>Busca: {{ busca }}</strong>{% endif %}{% if estado %}{% for valor, rotulo in estados %}{% if valor == estado %}<strong>{{ rotulo }}</strong>{% endif %}{% endfor %}{% endif %}{% if vinculo %}<strong>{% if vinculo == 'bancas' %}Participações em bancas{% else %}Orientações e coorientações{% endif %}</strong>{% endif %}</div>{% endif %}
+    <p class="painel-list-caption">{% if pagina.paginator.count %}Mostrando {{ pagina.start_index }}–{{ pagina.end_index }} de {{ pagina.paginator.count }}{% else %}Nenhum resultado para esta seleção{% endif %}<span>Mais recentes primeiro</span></p>
     <div class="perfil-work-list">
         {% for trabalho in pagina %}
-        <article class="perfil-work">
+        <article class="perfil-work" data-situacao="{{ trabalho.status_fluxo }}">
             <div class="perfil-work-top"><span class="perfil-status {% if trabalho.status_fluxo == 'RASCUNHO' %}status-draft{% endif %}">{{ trabalho.get_status_fluxo_display }}</span><span class="perfil-course">{{ trabalho.curso.nome }}</span></div>
             <h3><a href="{% url 'usuarios:trabalho' trabalho.pk %}?perfil={{ perfil.slug }}">{{ trabalho.titulo }}</a></h3>
-            <p>{{ trabalho.aluno.nome }} <span aria-hidden="true">·</span> Orientação: {{ trabalho.orientador.nome }}</p>
+            <dl class="painel-work-meta"><div><dt>Aluno</dt><dd>{{ trabalho.aluno.nome }}</dd></div><div><dt>Orientação</dt><dd>{{ trabalho.orientador.nome }}</dd></div></dl>
+            <div class="painel-next-step"><span class="painel-step-dot" aria-hidden="true"></span><p><strong>{% if trabalho.status_fluxo == 'RASCUNHO' %}Em preparação</strong> Revise o conteúdo antes de enviar o PDF.{% elif trabalho.status_fluxo == 'AJUSTES_SOLICITADOS' %}Ajustes solicitados</strong> Consulte o parecer e prepare o reenvio.{% elif trabalho.status_fluxo == 'SUBMETIDA' or trabalho.status_fluxo == 'EM_ANALISE_ORIENTADOR' %}Em análise</strong> Aguardando o parecer do orientador.{% elif trabalho.status_fluxo == 'APROVADA_ORIENTADOR' %}Orientação aprovada</strong> Acompanhe a proposta e as confirmações da banca.{% elif trabalho.status_fluxo == 'BANCA_AGENDADA' %}Defesa agendada</strong> Consulte a data e os participantes nos detalhes.{% elif trabalho.status_fluxo == 'DEFESA_REALIZADA' %}Defesa realizada</strong> Acompanhe as avaliações e o fechamento.{% elif trabalho.status_fluxo == 'APROVADA_COM_RESSALVAS' %}Correções necessárias</strong> Entregue a versão corrigida e o termo de autorização.{% elif trabalho.status_fluxo == 'CORRECOES_ENTREGUES' %}Documentos em conferência</strong> Acompanhe a aceitação da correção e do termo.{% elif trabalho.status_fluxo == 'APROVADA' %}Aprovado pela banca</strong> Acompanhe a entrega e a conferência do termo.{% elif trabalho.status_fluxo == 'PUBLICADA' %}Disponível para leitura</strong> A versão final já está no repositório público.{% else %}Resultado registrado</strong> Consulte os pareceres da banca nos detalhes.{% endif %}</p></div>
             <div class="perfil-work-actions">
                 <a href="{% url 'usuarios:trabalho' trabalho.pk %}?perfil={{ perfil.slug }}">Ver trabalho →</a>
                 {% if perfil.slug == 'aluno' and trabalho.status_fluxo == 'RASCUNHO' %}<a href="{% url 'usuarios:editar-rascunho' trabalho.pk %}">Editar rascunho</a>{% endif %}
@@ -50,7 +64,7 @@
             </div>
         </article>
         {% empty %}
-        <div class="perfil-empty"><h3>{% if busca or estado %}Nenhum trabalho encontrado{% else %}Nenhum trabalho por aqui ainda{% endif %}</h3><p>{% if busca or estado %}Tente outro termo ou limpe os filtros.{% elif perfil.slug == 'aluno' %}Crie seu primeiro rascunho para começar a organizar o trabalho.{% else %}Os trabalhos aparecerão aqui quando estiverem vinculados a este perfil.{% endif %}</p></div>
+        <div class="perfil-empty"><span class="painel-empty-icon">{% include 'ui/icon.html' with nome='book' %}</span><h3>{% if busca or estado or vinculo %}Nenhum trabalho encontrado{% else %}Nenhum trabalho por aqui ainda{% endif %}</h3><p>{% if busca or estado or vinculo %}Tente outro termo ou limpe os filtros.{% elif perfil.slug == 'aluno' %}Crie seu primeiro rascunho para começar a organizar o trabalho.{% else %}Os trabalhos aparecerão aqui quando estiverem vinculados a este perfil.{% endif %}</p>{% if busca or estado or vinculo %}<a class="painel-empty-action" href="{{ perfil.url }}#meus-trabalhos">Limpar filtros</a>{% elif perfil.slug == 'aluno' %}<a class="painel-empty-action" href="{% url 'usuarios:novo-rascunho' %}">Criar meu primeiro rascunho →</a>{% endif %}</div>
         {% endfor %}
     </div>
     {% if pagina.has_other_pages %}
@@ -63,17 +77,18 @@
 </section>
 <aside class="perfil-aside">
     {% if perfil.slug == 'professor' %}
-    <section class="perfil-section" aria-labelledby="minhas-participacoes"><h2 id="minhas-participacoes">Minhas participações</h2><p class="perfil-caption">Suas cinco participações mais recentes em bancas não canceladas.</p>
-    {% for participacao in participacoes %}<article class="perfil-agenda"><h3>{{ participacao.banca.monografia.titulo }}</h3><p>{{ participacao.get_papel_display }} · {{ participacao.get_convite_status_display }}</p><time datetime="{{ participacao.banca.inicio|date:'c' }}">{{ participacao.banca.inicio|date:'d/m/Y · H:i' }}</time><a href="{% url 'usuarios:trabalho' participacao.banca.monografia_id %}?perfil=professor">Consultar participação →</a></article>{% empty %}<p class="perfil-caption">Você ainda não participa de uma banca.</p>{% endfor %}
+    <section class="perfil-section" aria-labelledby="minhas-participacoes"><div class="painel-aside-heading"><span class="painel-aside-icon">{% include 'ui/icon.html' with nome='users' %}</span><div><span class="painel-kicker">COMO AVALIADOR</span><h2 id="minhas-participacoes">Minhas participações</h2></div></div><p class="perfil-caption">Suas cinco participações mais recentes em bancas não canceladas.</p>
+    {% for participacao in participacoes %}<article class="perfil-agenda"><h3>{{ participacao.banca.monografia.titulo }}</h3><p class="painel-participation-role">{{ participacao.get_papel_display }} <span class="painel-invitation-status" data-convite="{{ participacao.convite_status }}">{{ participacao.get_convite_status_display }}</span></p><time datetime="{{ participacao.banca.inicio|date:'c' }}">{{ participacao.banca.inicio|date:'d/m/Y · H:i' }}</time><a href="{% url 'usuarios:trabalho' participacao.banca.monografia_id %}?perfil=professor">{% if participacao.convite_status == 'CONVIDADO' and participacao.banca.status == 'PENDENTE' %}Responder ao convite →{% else %}Consultar participação →{% endif %}</a></article>{% empty %}<p class="perfil-caption">Você ainda não participa de uma banca.</p>{% endfor %}
     </section>
     {% endif %}
-    <section class="perfil-section"><h2>Próximas bancas</h2><p class="perfil-caption">Até cinco bancas dos trabalhos deste perfil.</p>
-    {% for banca in proximas_bancas %}<article class="perfil-agenda"><time datetime="{{ banca.inicio|date:'c' }}">{{ banca.inicio|date:'d/m/Y · H:i' }}</time><h3>{{ banca.monografia.titulo }}</h3><p>{{ banca.get_modalidade_display }}{% if banca.local %} · {{ banca.local }}{% endif %}</p><a href="{% url 'usuarios:trabalho' banca.monografia_id %}?perfil={{ perfil.slug }}">Consultar banca →</a></article>{% empty %}<p class="perfil-caption">Não há bancas agendadas neste momento.</p>{% endfor %}
+    <section id="agenda-painel" class="perfil-section painel-agenda-section" aria-labelledby="titulo-agenda"><div class="painel-aside-heading"><span class="painel-aside-icon">{% include 'ui/icon.html' with nome='calendar' %}</span><div><span class="painel-kicker">SUA AGENDA</span><h2 id="titulo-agenda">Próximas bancas</h2></div><span class="painel-result-count">{{ total_bancas }}</span></div><p class="perfil-caption">Até cinco bancas dos trabalhos deste perfil.</p>
+    {% for banca in proximas_bancas %}<article class="perfil-agenda painel-agenda-card"><div class="painel-agenda-date" aria-hidden="true"><strong>{{ banca.inicio|date:'d' }}</strong><span>{{ banca.inicio|date:'M' }}</span></div><div class="painel-agenda-content"><time datetime="{{ banca.inicio|date:'c' }}">{{ banca.inicio|date:'d/m/Y' }} <span>às {{ banca.inicio|date:'H:i' }}</span></time><h3>{{ banca.monografia.titulo }}</h3><p><span class="painel-modality">{{ banca.get_modalidade_display }}</span>{% if banca.local %}<span class="painel-location">{{ banca.local }}</span>{% endif %}{% if banca.link %}<a class="painel-meeting" href="{{ banca.link }}" target="_blank" rel="noopener noreferrer">Abrir reunião ↗<span class="sr-only"> (nova aba)</span></a>{% endif %}</p><a href="{% url 'usuarios:trabalho' banca.monografia_id %}?perfil={{ perfil.slug }}">Consultar banca →</a></div></article>{% empty %}<div class="painel-agenda-empty">{% include 'ui/icon.html' with nome='calendar' %}<strong>Sua agenda está livre</strong><p>Não há bancas agendadas neste momento. Novos agendamentos aparecerão aqui.</p></div>{% endfor %}
     </section>
     <section class="perfil-note"><h2>Seu acesso</h2><p>{% if perfil.slug == 'aluno' %}Você pode criar, editar e excluir seus rascunhos. Acompanhe aqui a situação de cada trabalho.{% elif perfil.slug == 'professor' %}Consulte suas orientações, coorientações e trabalhos em que participa da banca. Como orientador principal, você também pode emitir convites externos depois da aprovação da orientação.{% elif perfil.slug == 'coordenador' %}Consulte os trabalhos dos cursos que coordena. Nos detalhes da banca, você pode emitir convites para membros externos quando a orientação estiver aprovada.{% else %}Use os cadastros para gerenciar alunos, professores e cursos. Vincule a conta de acesso ao aluno ou professor para liberar seu painel. As monografias, bancas e avaliações continuam disponíveis na área de gestão.{% endif %}</p>
     {% if perfil.slug == 'administrador' %}<a href="{% url 'monografias:index' %}">Monografias e bancas →</a>{% endif %}
-    <p class="perfil-caption">Submissão e aprovação pelo orientador dependem da integração com o microserviço. Registro de avaliações e fechamento do resultado estão disponíveis nos detalhes da banca realizada.</p></section>
+    <a class="painel-repo-link" href="{% url 'repositorio:catalogo' %}">{% include 'ui/icon.html' with nome='book' %} Explorar o repositório <span aria-hidden="true">↗</span></a></section>
 </aside>
+</div>
 </div>
 {% else %}
 <div class="perfil-empty perfil-section"><span class="perfil-eyebrow">Minha conta</span><h1>Seu acesso acadêmico está em preparação</h1><p>Olá, {{ usuario.get_full_name|default:usuario.username }}. Sua conta está ativa, mas ainda não foi vinculada a um perfil acadêmico.</p><p>Solicite à administração o vínculo de aluno, professor ou coordenador. Depois, acesse este painel novamente.</p><a class="btn app-cta-btn" href="{% url 'usuarios:painel' %}">Verificar meu acesso</a></div>
