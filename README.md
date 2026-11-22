@@ -181,8 +181,8 @@ Convites elegíveis são emitidos pelos detalhes do trabalho ou em
 `/usuarios/convites/{participacao_id}/emitir/`. O emissor recebe endereço e código
 para entrega manual. O externo acessa `/usuarios/convites/{participacao_id}/`
 e informa o código, sem conta. O código não é colocado na URL; não há envio
-automático de e-mail. Essas telas não implementam submissão, aprovação,
-avaliação, publicação ou integração do microserviço.
+automático de e-mail. Submissão, aprovação e avaliação usam as ações acadêmicas
+B09–B11; documentos e publicação usam a tela B12 descrita abaixo.
 
 ## Funcionalidades entregues
 
@@ -207,8 +207,7 @@ Na criação acadêmica, aluno e curso vêm do servidor. O token externo tem
 hash persistido, validade e bloqueio de nova confirmação após o aceite.
 Seu `{id}` é o ID da participação, não da banca. A emissão exige monografia
 aprovada pelo orientador ou com banca agendada, banca `AGENDADA` e participação
-`CONVIDADO`. Ainda não há ação de submissão/aprovação para alcançar esses
-estados pela aplicação; o teste prepara esse estado diretamente no banco.
+`CONVIDADO`. As ações B09/B10 permitem alcançar esses estados pela aplicação.
 
 A rota de JWT recebida do PR #4 aceita somente sessão autenticada e POST com
 CSRF. Para uma conta com mais de um papel, envie `role=aluno`, `orientador`,
@@ -216,37 +215,100 @@ CSRF. Para uma conta com mais de um papel, envie `role=aluno`, `orientador`,
 `role` é opcional. A resposta traz `access` (Bearer) e validade de dez minutos.
 Sem `MICROSERVICO_JWT_SIGNING_KEY` válida, responde 503; o restante do sistema
 continua funcionando. O verificador do microserviço precisa usar a mesma chave
-e as mesmas regras de assinatura. A emissão foi testada localmente, mas chamadas
-reais entre serviços, revogação de tokens e sincronização de dados ainda faltam.
+e as mesmas regras de assinatura. B09 e a cópia original B12 foram testados com
+HTTP/JWT reais; isso não comprova revogação geral ou sincronização de todos os dados.
 
 A auditoria registra login/logout, escritas dos CRUDs REST e formulários HTML,
 rascunhos acadêmicos e emissão/confirmação de convites. Falta completar os
 fluxos acadêmicos, a consulta autorizada do histórico e sua política de retenção.
 
-Continuam pendentes submissão, aprovação/devolução, disponibilidade e quórum de
-banca, recusa e convites internos, avaliação pelo próprio participante,
-fechamento de resultado, upload/download de PDF, publicação e catálogo público.
-Os painéis já atendem às funções disponíveis no principal; o percurso completo
-depende desses processos e da integração descrita em B17. O PR #4 adicionou
-o emissor JWT local, sem comprovar o consumo do token pelo microserviço.
+O fluxo B09–B12 oferece submissão, orientação, agendamento, avaliação, fechamento
+e publicação automática. B13 acrescenta catálogo/API públicos e indexação do
+PDF final por RabbitMQ. Processamento na submissão, notificações, Redis de
+busca/sessões, controles institucionais e gráficos permanecem no
+[backlog atualizado](docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md).
+
+### Documentos e publicação automática (B12)
+
+No detalhe do trabalho, use **Acompanhar documentos e publicação**. Após a
+aprovação da banca, o aluno envia o termo e, se houver ressalvas, a versão
+corrigida. O orientador confere a correção; a coordenação do curso ou administração
+confere visualmente a assinatura do termo. A última condição satisfeita publica
+automaticamente e fixa o arquivo final, com histórico e bloqueio de alterações.
+
+São aceitos PDFs de até 50 MB, com estrutura e SHA-256 validados. Documentos B12
+ficam no principal; o original B09 permanece no microserviço. Sem ressalvas, o
+principal obtém uma cópia final por HTTP/JWT e confere o hash original. Os
+documentos complementares continuam privados; o PDF final é acessível pelo B13.
+
+Atualize as dependências e aplique `monografias.0006_documentos_publicacao_b12`:
+
+```bash
+env/bin/pip install -r requirements.txt
+env/bin/python manage.py migrate
+```
+
+Regras, permissões, endpoints, migração de documentos legados e comandos de
+teste estão em [DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md#b12--documentos-correções-e-publicação-automática-22112026).
+B12 foi validado localmente com 24 testes de regras, 2 de navegador e 2 de
+integração real. O registro de commit/merge local está no [histórico](docs/COMMITS.md); push remoto permanece pendente.
+
+### Repositório público e busca (B13)
+
+Acesse **`/repositorio/`**, sem login. A pesquisa oferece título, autor,
+orientador, curso, ano da defesa e palavras-chave, além de busca no conteúdo
+dos PDFs indexados. Há paginação, ordenação, detalhes e leitura/download
+somente do arquivo final publicado pelo B12.
+
+API pública de leitura:
+
+- `/api/publico/monografias/` e `/api/publico/monografias/{id}/`;
+- `/api/publico/monografias/{id}/arquivo/` (`?download=1` para baixar);
+- `/api/publico/cursos/` e `/api/publico/orientadores/`.
+
+A publicação grava uma tarefa no banco; um worker envia/consome eventos
+RabbitMQ e indexa o texto no PostgreSQL. O processo web não espera pela fila
+ou pela extração. As migrações `repositorio.0001/0002` criam o índice/outbox
+e enfileiram publicações existentes.
+
+Para iniciar a infraestrutura local, preencha as variáveis RabbitMQ indicadas
+em `.env.example` no seu `.env`. A configuração JWT continua separada.
+
+```bash
+env/bin/pip install -r requirements.txt
+env/bin/python manage.py migrate
+docker compose -f compose.repositorio.yml --project-name allteam-repositorio up -d --wait
+# Execute em um processo separado do servidor web:
+env/bin/python -u manage.py processar_repositorio
+```
+
+O broker local usa `127.0.0.1:5673` e painel `127.0.0.1:15673`, com volume
+persistente e credenciais do `.env`. Consulte o progresso com
+`env/bin/python manage.py status_repositorio`. Para repetir eventos que
+esgotaram as tentativas, execute o worker com `--repetir-falhas` após corrigir
+a causa. Os metadados ficam disponíveis enquanto o PDF aguarda indexação.
+
+B13 validado com **20 testes de backend, 2 de navegador e 3 com RabbitMQ real**.
+Suíte padrão: **216 testes, 201 aprovados, 15 opcionais ignorados, zero falhas**.
+Contratos, falhas/DLQ, limitações e reprodução estão no
+[guia B13](docs/DESENVOLVIMENTO.md#b13--repositório-api-pública-e-indexação-por-fila-22112026).
 
 ## Documentação e organização
 
-A documentação canônica é versionada na raiz, consolidando as cópias enviadas
-pela equipe:
+A documentação disponível nesta sessão está organizada assim:
 
 - [CRUD.md](CRUD.md): contratos, exemplos, telas, convites e auditoria.
-- [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md): configuração, arquitetura e extensão.
-- [PENDENCIAS.md](PENDENCIAS.md): backlog B01–B17 e pendências do microserviço.
-- [ESCOPO_E_ACESSOS.md](ESCOPO_E_ACESSOS.md): comparação com o enunciado anexado e matriz de acesso.
-- [COMMITS.md](COMMITS.md): histórico, validação e limpeza desta entrega.
+- [DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md): configuração, arquitetura, extensão e entregas B12/B13.
+- [Pendências de 22/11/2026](docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md): backlog B01–B17 e pendências do microserviço.
+- [ESCOPO_E_ACESSOS.md](docs/ESCOPO_E_ACESSOS.md): comparação com o enunciado anexado e matriz de acesso.
+- [COMMITS.md](docs/COMMITS.md): histórico e validações anteriores.
 
-`docs/` continua ignorada pelo Git, com cópias locais e o documento recebido
-`PENDENCIAS_ATUALIZADO.md`. A decisão desse documento de não criar telas foi
-substituída pelo pedido de entregar os perfis. E-mail opcional foi mantido.
+Os documentos canônicos listados acima são versionados em `docs/` por exceções
+explícitas no `.gitignore`; demais anexos/cópias continuam locais. E-mail opcional foi mantido.
 O enunciado anexado exige IP/VPN institucional; esse controle continua ausente
-e está registrado como pendência, apesar da retirada anterior pela equipe. O relatório do microserviço foi incorporado ao backlog
-como evidência recebida, sem declarar integração ou execução local desse serviço.
+e está registrado como pendência, apesar da retirada anterior pela equipe.
+O guia B12 registra separadamente a integração real executada nesta sessão e os
+limites desses testes.
 
 `equipe` e `monografias` mantêm os models; `usuarios` contém papéis, consultas,
 serviços acadêmicos, API e telas; `home` contém início e recursos compartilhados.
@@ -258,7 +320,7 @@ As migrações e `Equipe` foram preservadas porque ainda sustentam a transição
 O fluxo recomendado continua `main` → `develop` → `feature/<nome>`, com commits
 `tipo(escopo): descrição`. A branch `develop` local ainda tem a base antiga
 `abf487f`; esta entrega parte da `main` atual e é integrada nela após validação.
-Detalhes dos commits e do merge ficam em [COMMITS.md](COMMITS.md).
+Detalhes dos commits e do merge ficam em [COMMITS.md](docs/COMMITS.md).
 
 ## Testes
 

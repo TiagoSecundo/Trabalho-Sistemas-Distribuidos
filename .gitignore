@@ -20,5 +20,10 @@ media/
 .vscode/
 .idea/
 
-# Documentação de trabalho mantida apenas localmente
-/docs/
+# Documentos canônicos da entrega; demais anexos/cópias continuam locais.
+/docs/*
+!/docs/COMMITS.md
+!/docs/DESENVOLVIMENTO.md
+!/docs/ESCOPO_E_ACESSOS.md
+!/docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md
+!/docs/Trabalho_SistemasDistribuidos_Monografias (1) (2).md

@@ -24,6 +24,8 @@ urlpatterns = [
     path('sair/', LogoutView.as_view(), name='logout'),
     path('admin/', admin.site.urls),
     path('api/', include('Curso_Django.api_urls')),
+    path('api/publico/', include('repositorio.api_urls')),
+    path('repositorio/', include('repositorio.urls')),
     path('api-auth/', include('usuarios.auth_urls')),
     path('', include('home.urls')),
     path('equipe/', include('equipe.urls')),

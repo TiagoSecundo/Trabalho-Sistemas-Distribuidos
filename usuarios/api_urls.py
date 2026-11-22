@@ -5,6 +5,7 @@ from .api import (
     EmitirConviteExternoView, ConfirmarConviteExternoView,
 )
 from .jwt_api import TokenMicroservicoView
+from .publicacao_api import DocumentosView, ConferirDocumentoView, DocumentoArquivoView
 from .avaliacoes_api import RegistrarDefesaView, MinhaAvaliacaoView, FinalizarBancaView
 from .avaliacao_externa_api import EmitirCodigoAvaliacaoExternaView, RegistrarAvaliacaoExternaView
 from .agendamento_api import (
@@ -13,6 +14,9 @@ from .agendamento_api import (
 )
 
 urlpatterns = [
+    path('monografias/<int:pk>/documentos/', DocumentosView.as_view(), name='api-documentos'),
+    path('monografias/<int:pk>/documentos/<int:documento_id>/conferir/', ConferirDocumentoView.as_view(), name='api-conferir-documento'),
+    path('monografias/<int:pk>/documentos/<int:documento_id>/arquivo/', DocumentoArquivoView.as_view(), name='api-documento-arquivo'),
     path('monografias/<int:pk>/submeter-pdf/', SubmeterPdfView.as_view(), name='api-submeter-pdf'),
     path('monografias/<int:pk>/orientacao/aprovar/', ParecerOrientadorView.as_view(), {'decisao': 'aprovar'}, name='api-aprovar-orientador'),
     path('monografias/<int:pk>/orientacao/ajustes/', ParecerOrientadorView.as_view(), {'decisao': 'ajustes'}, name='api-solicitar-ajustes'),

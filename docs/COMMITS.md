@@ -1,5 +1,30 @@
 # Registro dos commits e das entregas
 
+## Entrega local de interface, B12 e B13 — 22/11/2026
+
+Base: `aca1766`, após atualizar `origin` e conferir a integração anterior.
+A entrega é registrada na branch `feature/publicacao-repositorio-b12-b13`
+e integrada à `main` com merge `--no-ff`, conforme pedido do integrante.
+O push ao remoto não foi solicitado.
+
+Conteúdo: telas iniciais/contas, documentos privados e publicação automática
+B12, catálogo/API anônimos B13, indexação PostgreSQL por RabbitMQ com outbox,
+migrações, testes e instruções de operação. Os documentos canônicos foram
+preservados em `docs/` e incluídos no versionamento por exceções explícitas
+no `.gitignore`. `.env`, arquivos enviados, bancos e credenciais ficam fora do Git.
+
+Evidências anteriores ao commit: suíte padrão com **216 testes encontrados,
+201 aprovados e 15 opcionais ignorados**; B13 com **20 testes de backend,
+2 de navegador e 3 de RabbitMQ real** aprovados. B12 teve **24 testes de
+regras, 2 de navegador e 2 de integração HTTP/JWT real** aprovados.
+Os ajustes finais de detalhe via API e correspondência de hash do índice
+foram verificados com testes direcionados. Migrações aplicadas, `check`,
+consistência de migrações, sintaxe JavaScript e `git diff --check` aprovados.
+
+Consulte os hashes com `git log --first-parent --oneline main` e
+`git log --oneline feature/publicacao-repositorio-b12-b13 -1`.
+A revisão do novo backlog da Parte 1 começa após esse merge, em entrega separada.
+
 Registro canônico versionado, consolidado em **20/11/2026**. A entrega dos
 perfis parte de `5f7857b` (PR #3). As seções da refatoração e autenticação
 preservam o histórico anterior; o resultado dos painéis e da limpeza está

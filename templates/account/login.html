@@ -1,18 +1,46 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Entrar · AllTeam Monografias{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'home/conta.css' %}">{% endblock %}
 {% block content %}
-<section class="crud-page container">
-    <div class="crud-form-shell crud-card p-4">
-        <span class="section-label text-muted">AllTeam Monografias</span>
-        <h1>Acesse sua conta</h1>
-        <p>Entre com seu usuário ou e-mail para acessar seu painel de aluno, professor, coordenador ou administrador.</p>
-        <form method="post" action="{% url 'account_login' %}" class="crud-form">
-            {% csrf_token %}
-            {{ form.as_p }}
-            {{ redirect_field }}
-            <button type="submit" class="btn app-cta-btn">Entrar</button>
-        </form>
-        <p class="mt-4 mb-0">Ainda não tem conta? <a href="{{ signup_url }}">Criar conta</a></p>
+<section class="container conta-page" aria-labelledby="login-titulo">
+  <div class="conta-layout">
+    <aside class="conta-intro">
+      <span class="conta-kicker">Bem-vindo de volta</span>
+      <h1 id="login-titulo">Seu percurso acadêmico começa aqui.</h1>
+      <p>Acesse seu espaço para acompanhar monografias, orientações e bancas com mais clareza.</p>
+      <div class="conta-note">
+        <span class="conta-note-symbol" aria-hidden="true">✦</span>
+        <div><strong>Um espaço para cada etapa</strong><span>Entre com seu usuário ou e-mail para continuar de onde parou.</span></div>
+      </div>
+      <p class="conta-switch">Ainda não tem conta? <a href="{{ signup_url }}">Criar minha conta <span aria-hidden="true">↗</span></a></p>
+    </aside>
+    <div class="conta-card">
+      <span class="conta-card-kicker">Acesso à plataforma</span>
+      <h2>Entrar na conta</h2>
+      <p class="conta-card-subtitle">Informe seus dados para acessar o painel.</p>
+      <form method="post" action="{% url 'account_login' %}" class="crud-form conta-form" novalidate>
+        {% csrf_token %}
+        {{ redirect_field }}
+        {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          {% if field.is_hidden %}{{ field }}{% else %}
+          {% if field.field.widget.input_type == 'checkbox' %}
+          <div class="form-group conta-checkbox"><label for="{{ field.id_for_label }}">{{ field }} {{ field.label }}</label><div class="conta-errors">{{ field.errors }}</div></div>
+          {% else %}
+          <div class="form-group">
+            <label for="{{ field.id_for_label }}">{% if field.name == 'login' %}Usuário ou e-mail{% else %}{{ field.label }}{% endif %}</label>
+            {{ field }}
+            <div class="conta-errors">{{ field.errors }}</div>
+            {% if field.help_text %}<div class="conta-help">{{ field.help_text }}</div>{% endif %}
+          </div>
+          {% endif %}
+          {% endif %}
+        {% endfor %}
+        <button type="submit" class="btn app-cta-btn conta-submit">Entrar <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="conta-card-footer">Novo por aqui? <a href="{{ signup_url }}">Crie uma conta</a></p>
     </div>
+  </div>
 </section>
 {% endblock %}

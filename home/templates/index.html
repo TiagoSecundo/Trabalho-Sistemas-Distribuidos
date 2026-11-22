@@ -1,175 +1,50 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}AllTeam Monografias · Gestão acadêmica{% endblock %}
-
+{% block extra_head %}<link rel="stylesheet" href="{% static 'home/inicio.css' %}">{% endblock %}
 {% block content %}
-<style>
-    .home-hero {
-        padding: 3rem 0 2rem;
-        background: radial-gradient(circle at 10% 10%, rgba(20, 184, 166, 0.14) 0%, rgba(20, 184, 166, 0) 40%),
-            radial-gradient(circle at 90% 20%, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0) 35%);
-    }
-
-    .home-pill {
-        display: inline-block;
-        padding: .35rem .75rem;
-        border-radius: 999px;
-        background: #ccfbf1;
-        color: #115e59;
-        font-weight: 700;
-        font-size: .8rem;
-        letter-spacing: .04em;
-        text-transform: uppercase;
-        margin-bottom: 1rem;
-    }
-
-    .home-title {
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.15;
-        margin-bottom: 1rem;
-    }
-
-    .home-lead {
-        font-size: 1.06rem;
-        color: #334155;
-        max-width: 760px;
-        margin-bottom: 1.25rem;
-    }
-
-    .home-cta .btn {
-        border-radius: 999px;
-        font-weight: 700;
-        padding: .55rem 1.1rem;
-    }
-
-    .home-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        background: #ffffff;
-        box-shadow: 0 20px 32px -34px rgba(15, 23, 42, 0.95);
-        height: 100%;
-    }
-
-    .home-card .card-body {
-        padding: 1.2rem 1.1rem;
-    }
-
-    .home-card h3 {
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin-bottom: .55rem;
-    }
-
-    .home-card p {
-        color: #475569;
-        margin-bottom: 0;
-    }
-
-    .home-section-title {
-        font-size: 1.45rem;
-        font-weight: 800;
-        margin: 2rem 0 1rem;
-        color: #0f172a;
-    }
-
-    .home-flow {
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        background: #f8fafc;
-        padding: 1.25rem;
-    }
-
-    .home-flow-step {
-        border-left: 3px solid #14b8a6;
-        padding-left: .9rem;
-        margin-bottom: .9rem;
-    }
-
-    .home-flow-step:last-child {
-        margin-bottom: 0;
-    }
-
-    .home-flow-step h4 {
-        font-size: 1rem;
-        margin: 0 0 .3rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .home-flow-step p {
-        margin: 0;
-        color: #475569;
-    }
-</style>
-
-<section class="home-hero">
-    <div class="container">
-        <span class="home-pill">Gestão acadêmica</span>
-        <h1 class="home-title">Monografias, orientações e bancas<br>em um só lugar.</h1>
-        <p class="home-lead">
-            Organize os trabalhos de conclusão de curso, seus autores e orientadores.
-            Mantenha os cadastros acadêmicos, componha bancas e registre os pareceres
-            dos avaliadores em uma área de gestão integrada.
-        </p>
-        <div class="home-cta">
-            {% if user.is_authenticated and acesso_administrativo %}
-            <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'monografias:index' %}">Gerenciar monografias</a>
-            <a class="btn btn-outline-secondary mb-2" href="{% url 'monografias:adicionar' %}">Adicionar monografia</a>
-            {% elif user.is_authenticated %}
-            <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'usuarios:painel' %}">Acessar meu painel</a>
-            {% else %}
-            <a class="btn app-cta-btn mr-2 mb-2" href="{% url 'account_login' %}">Entrar no meu painel</a>
-            {% endif %}
+<div class="inicio-page">
+  <section class="inicio-hero" aria-labelledby="inicio-titulo">
+    <div class="container inicio-hero-grid">
+      <div class="inicio-hero-copy">
+        <span class="inicio-eyebrow"><span aria-hidden="true"></span> Espaço acadêmico organizado</span>
+        <h1 id="inicio-titulo">Monografias, orientações e bancas <em>em um só lugar.</em></h1>
+        <p class="inicio-lead">Acompanhe cada etapa do trabalho acadêmico em um espaço claro para estudantes, professores e coordenação.</p>
+        <div class="inicio-actions">
+          <a class="inicio-button inicio-button-secondary" href="{% url 'repositorio:catalogo' %}">Explorar o repositório <span aria-hidden="true">↗</span></a>
+          {% if user.is_authenticated and acesso_administrativo %}
+          <a class="inicio-button inicio-button-primary" href="{% url 'monografias:index' %}">Gerenciar monografias <span aria-hidden="true">↗</span></a>
+          <a class="inicio-button inicio-button-secondary" href="{% url 'equipe:index' %}">Ver cadastros</a>
+          {% elif user.is_authenticated %}
+          <a class="inicio-button inicio-button-primary" href="{% url 'usuarios:painel' %}">Acessar meu painel <span aria-hidden="true">↗</span></a>
+          {% else %}
+          <a class="inicio-button inicio-button-primary" href="{% url 'account_login' %}">Entrar no meu painel <span aria-hidden="true">↗</span></a>
+          <a class="inicio-button inicio-button-secondary" href="{% url 'account_signup' %}">Criar conta</a>
+          {% endif %}
         </div>
-
-        <h2 class="home-section-title">O que você pode organizar</h2>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <article class="home-card card">
-                    <div class="card-body">
-                        <h3>Cadastros acadêmicos</h3>
-                        <p>Alunos, professores e cursos conectados aos trabalhos e às orientações.</p>
-                        {% if acesso_administrativo %}<a href="{% url 'equipe:index' %}" class="d-inline-block mt-3">Acessar cadastros →</a>{% endif %}
-                    </div>
-                </article>
-            </div>
-            <div class="col-md-4 mb-3">
-                <article class="home-card card">
-                    <div class="card-body">
-                        <h3>Monografias</h3>
-                        <p>Títulos, resumos, palavras-chave e vínculos acadêmicos de cada trabalho.</p>
-                        {% if acesso_administrativo %}<a href="{% url 'monografias:index' %}" class="d-inline-block mt-3">Consultar trabalhos →</a>{% endif %}
-                    </div>
-                </article>
-            </div>
-            <div class="col-md-4 mb-3">
-                <article class="home-card card">
-                    <div class="card-body">
-                        <h3>Bancas e avaliações</h3>
-                        <p>Horários, participantes internos e externos, notas e pareceres reunidos por trabalho.</p>
-                        {% if acesso_administrativo %}<a href="{% url 'monografias:recurso-lista' 'bancas' %}" class="d-inline-block mt-3">Organizar bancas →</a>{% endif %}
-                    </div>
-                </article>
-            </div>
+        <div class="inicio-hero-footnote"><span aria-hidden="true"></span> Do primeiro rascunho à apresentação final</div>
+      </div>
+      <div class="inicio-visual" role="img" aria-label="Etapas de um trabalho acadêmico: monografia, orientação e banca">
+        <div class="inicio-visual-top"><span class="inicio-visual-mark" aria-hidden="true">A</span><span>Jornada acadêmica</span><span class="inicio-visual-dots" aria-hidden="true">● ● ●</span></div>
+        <div class="inicio-visual-body">
+          <div class="inicio-visual-heading"><span>Seu trabalho, em movimento</span><strong>01 — 03</strong></div>
+          <div class="inicio-progress" aria-hidden="true"><span></span></div>
+          <div class="inicio-stage"><span class="inicio-stage-icon" aria-hidden="true">01</span><div><small>Comece por aqui</small><strong>Monografia</strong><span>Organize ideias e informações do trabalho.</span></div><span class="inicio-stage-arrow" aria-hidden="true">↗</span></div>
+          <div class="inicio-stage"><span class="inicio-stage-icon" aria-hidden="true">02</span><div><small>Construa junto</small><strong>Orientação</strong><span>Acompanhe as etapas com seu orientador.</span></div><span class="inicio-stage-arrow" aria-hidden="true">↗</span></div>
+          <div class="inicio-stage"><span class="inicio-stage-icon" aria-hidden="true">03</span><div><small>Próximo passo</small><strong>Banca</strong><span>Reúna participantes e avaliações.</span></div><span class="inicio-stage-arrow" aria-hidden="true">↗</span></div>
         </div>
-
-        <h2 class="home-section-title">Por onde começar</h2>
-        <div class="home-flow">
-            <div class="home-flow-step">
-                <h4>1. Prepare os cadastros</h4>
-                <p>Cadastre professores, depois cursos e alunos. Esses vínculos identificam quem participa de cada trabalho.</p>
-            </div>
-            <div class="home-flow-step">
-                <h4>2. Registre a monografia</h4>
-                <p>Informe o tema e o resumo, selecione o aluno, seu curso e o professor orientador.</p>
-            </div>
-            <div class="home-flow-step">
-                <h4>3. Organize a banca e os pareceres</h4>
-                <p>Cadastre a banca, vincule os participantes e registre uma avaliação para cada avaliador.</p>
-            </div>
-        </div>
-        <p class="crud-hint mt-3">Área administrativa em desenvolvimento. Submissão, aprovação e publicação dos trabalhos serão disponibilizadas em uma próxima etapa.</p>
+        <div class="inicio-visual-caption"><span aria-hidden="true">✦</span> Cada etapa no seu lugar.</div>
+      </div>
     </div>
-</section>
+  </section>
+  <section class="inicio-features container" aria-labelledby="recursos-titulo">
+    <div class="inicio-section-heading"><div><span class="inicio-section-kicker">Tudo conectado</span><h2 id="recursos-titulo">Mais clareza em cada etapa.</h2></div><p>Informações organizadas para que cada pessoa encontre o que precisa e saiba como seguir.</p></div>
+    <div class="inicio-feature-grid">
+      <article class="inicio-feature"><span class="inicio-feature-number">01 /</span><span class="inicio-feature-icon" aria-hidden="true">▤</span><h3>Cadastros acadêmicos</h3><p>Alunos, professores e cursos relacionados aos trabalhos em um só lugar.</p>{% if acesso_administrativo %}<a href="{% url 'equipe:index' %}">Acessar cadastros <span aria-hidden="true">↗</span></a>{% endif %}</article>
+      <article class="inicio-feature"><span class="inicio-feature-number">02 /</span><span class="inicio-feature-icon" aria-hidden="true">▧</span><h3>Monografias</h3><p>Títulos, resumos, autores e orientadores reunidos ao longo do percurso.</p>{% if acesso_administrativo %}<a href="{% url 'monografias:index' %}">Consultar trabalhos <span aria-hidden="true">↗</span></a>{% endif %}</article>
+      <article class="inicio-feature"><span class="inicio-feature-number">03 /</span><span class="inicio-feature-icon" aria-hidden="true">◇</span><h3>Bancas e avaliações</h3><p>Participantes, horários e pareceres vinculados a cada trabalho.</p>{% if acesso_administrativo %}<a href="{% url 'monografias:recurso-lista' 'bancas' %}">Organizar bancas <span aria-hidden="true">↗</span></a>{% endif %}</article>
+    </div>
+  </section>
+  <section class="inicio-bottom container" aria-labelledby="comecar-titulo"><div><span class="inicio-section-kicker">Seu próximo passo</span><h2 id="comecar-titulo">Pronto para começar?</h2><p>Entre na sua conta para acompanhar o que importa para você.</p></div>{% if user.is_authenticated %}<a class="inicio-button inicio-button-light" href="{% url 'usuarios:painel' %}">Ir para meu painel <span aria-hidden="true">↗</span></a>{% else %}<a class="inicio-button inicio-button-light" href="{% url 'account_login' %}">Acessar plataforma <span aria-hidden="true">↗</span></a>{% endif %}</section>
+</div>
 {% endblock %}

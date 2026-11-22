@@ -1,9 +1,13 @@
 from django.urls import path
 from . import views
+from . import publicacao_views
 
 app_name = 'usuarios'
 
 urlpatterns = [
+    path('trabalhos/<int:pk>/documentos/', publicacao_views.documentos, name='documentos'),
+    path('trabalhos/<int:pk>/documentos/<int:documento_id>/conferir/', publicacao_views.conferir, name='conferir-documento'),
+    path('trabalhos/<int:pk>/documentos/<int:documento_id>/arquivo/', publicacao_views.arquivo, name='documento-arquivo'),
     path('painel/', views.painel, name='painel'),
     path('painel/<slug:perfil>/', views.painel, name='perfil'),
     path('trabalhos/<int:pk>/', views.trabalho, name='trabalho'),
