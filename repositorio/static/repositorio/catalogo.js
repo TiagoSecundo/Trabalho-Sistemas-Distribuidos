@@ -48,8 +48,10 @@
   function clear() { navigate(new URLSearchParams()); }
   function renderFilters(params) {
     const target = root.querySelector('[data-filtros-ativos]'); target.replaceChildren();
+    let total = 0;
     for (const [name,label] of Object.entries(labels)) {
       if (!params.get(name)) continue;
+      total++;
       const field = form.elements.namedItem(name);
       const value = field.tagName === 'SELECT' ? field.selectedOptions[0]?.textContent : params.get(name);
       const button = node('button', `${label}: ${value} ×`);
@@ -57,17 +59,36 @@
       button.addEventListener('click', () => {const next = new URLSearchParams(location.search);next.delete(name);next.delete('page');navigate(next);});
       target.append(button);
     }
+    root.querySelector('[data-selecao]').hidden = total === 0;
+    const badge = root.querySelector('[data-total-filtros]');
+    badge.textContent = total;
+    badge.hidden = total === 0;
   }
   function card(item) {
     const article = node('article', undefined, 'repo-card');
     const tags = node('div', undefined, 'repo-tags'); tags.append(node('span', item.curso.nome), node('span', `Defesa ${item.ano_defesa}`));
     const title = node('h3'); title.append(link(item.titulo, item.url));
-    const meta = node('p', `${item.autor} · Orientação: ${item.orientador.nome}`, 'repo-card-meta');
+    const meta = node('dl', undefined, 'repo-card-meta');
+    for (const [label, value] of [['Autor', item.autor], ['Orientação', item.orientador.nome]]) {
+      const field = node('div'); field.append(node('dt', label), node('dd', value)); meta.append(field);
+    }
     const abstract = node('p', item.resumo.length > 230 ? item.resumo.slice(0,230)+'…' : item.resumo, 'repo-card-abstract');
     const bottom = node('div', undefined, 'repo-card-bottom');
     const keywords = node('ul', undefined, 'repo-keywords');
-    for (const word of item.palavras_chave.slice(0,4)) keywords.append(node('li', word));
-    bottom.append(keywords, link('Ver trabalho →', item.url, 'repo-card-link'));
+    for (const word of item.palavras_chave.slice(0,4)) {
+      const keyword = node('li');
+      keyword.append(link(word, location.pathname+'?'+new URLSearchParams({palavras_chave:word})));
+      keywords.append(keyword);
+    }
+    const actions = node('div', undefined, 'repo-card-actions');
+    if (item.arquivo?.url) {
+      const pdf = link('Ler PDF ↗', item.arquivo.url, 'repo-card-pdf');
+      pdf.target = '_blank'; pdf.rel = 'noopener';
+      pdf.setAttribute('aria-label', 'Ler PDF de '+item.titulo+' (nova aba)');
+      actions.append(pdf);
+    }
+    actions.append(link('Ver trabalho →', item.url, 'repo-card-link'));
+    bottom.append(keywords, actions);
     article.append(tags,title,meta,abstract,bottom); return article;
   }
   async function load(focus=false) {
@@ -75,11 +96,18 @@
     const params = new URLSearchParams(location.search); renderFilters(params);
     results.setAttribute('aria-busy','true'); error.hidden=true; pagination.hidden=true;
     count.textContent='Buscando trabalhos…'; results.replaceChildren(node('div','Buscando trabalhos publicados…','repo-empty'));
+    root.querySelector('[data-faixa]').textContent='Atualizando a lista…';
     try {
       const data = await json(root.dataset.api+'?'+params, controller.signal);
       if (seq !== generation) return;
       current=data; results.replaceChildren(...data.results.map(card));
       count.textContent=`${data.count} ${data.count === 1 ? 'trabalho encontrado' : 'trabalhos encontrados'}`;
+      // O tamanho da página vem dos itens recebidos e do parâmetro público.
+      const pageSize = Number(params.get('page_size') || 12);
+      const first = (data.page - 1) * pageSize + 1;
+      root.querySelector('[data-faixa]').textContent = data.count
+        ? `Exibindo ${first}–${first + data.results.length - 1} de ${data.count}`
+        : 'Nenhum resultado para esta seleção';
       if (!data.count) {
         const empty=node('div',undefined,'repo-empty');
         empty.append(node('h3','Nenhum trabalho encontrado'),node('p','Experimente outros termos ou remova alguns filtros.'));
@@ -89,10 +117,16 @@
       root.querySelector('[data-pagina]').textContent=`Página ${data.page} de ${data.pages}`;
       root.querySelector('[data-anterior]').disabled=!data.previous;
       root.querySelector('[data-proxima]').disabled=!data.next;
-      if(focus) document.getElementById('resultados-titulo').focus({preventScroll:true});
+      if(focus) {
+        if(matchMedia('(max-width:767px)').matches) root.querySelector('.repo-filters').open=false;
+        const heading = document.getElementById('resultados-titulo');
+        heading.focus({preventScroll:true});
+        heading.scrollIntoView({block:'start', behavior:'auto'});
+      }
     } catch(exc) {
       if(exc.name==='AbortError' || seq!==generation) return;
       results.replaceChildren(); count.textContent='Pesquisa não concluída.'; error.hidden=false;
+      root.querySelector('[data-faixa]').textContent='Aguardando nova tentativa';
       root.querySelector('[data-mensagem-erro]').textContent=exc instanceof TypeError ? 'Não foi possível conectar. Verifique sua conexão e tente novamente.' : exc.message;
     } finally {if(seq===generation) results.setAttribute('aria-busy','false');}
   }
@@ -131,5 +165,8 @@
     renderFilters(new URLSearchParams(location.search));
   }
   root.querySelector('[data-recarregar-opcoes]').addEventListener('click',options);
+  root.querySelector('[data-abrir-filtros]').addEventListener('click', () => {
+    root.querySelector('.repo-filters').open=true;
+  });
   syncForm();load();options();
 })();

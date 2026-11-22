@@ -1,5 +1,23 @@
 # Registro dos commits e das entregas
 
+## Interface do repositório e dos painéis — 22/11/2026
+
+Entrega na branch `feature/ui-repositorio-painel`, a partir de `d20edac`, com
+integração à `main` por merge `--no-ff` e publicação solicitada pelo integrante.
+
+O repositório recebeu navegação por seção, filtros agrupados e identificados,
+faixa de resultados, metadados mais legíveis, temas navegáveis e acesso direto
+ao PDF final. Os painéis receberam indicadores clicáveis, atalhos, cartões com
+situação/próximo passo, filtros visíveis e agenda com data e local destacados.
+Os quatro perfis e o layout móvel foram conferidos. Serviços, permissões,
+modelos, APIs e migrações não foram alterados.
+
+Validação: **21 testes aprovados** (17 de interface e 4 cenários Chrome).
+Os 4 cenários Chrome passaram novamente com verificações específicas dos
+novos atalhos e filtros. `manage.py check`, sintaxe JavaScript e
+`git diff --check` aprovados. Capturas em `/tmp/allteam-ui-repositorio-painel/`.
+Detalhes em `DESENVOLVIMENTO.md`, seção UI/UX.
+
 ## Fechamento da Parte 1 — 22/11/2026
 
 A implementação principal foi preservada no commit `affafe4`, já presente em

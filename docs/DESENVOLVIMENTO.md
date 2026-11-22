@@ -1016,3 +1016,32 @@ O histórico e a situação de compartilhamento estão em `COMMITS.md`.
 As afirmações históricas acima sobre documentos ignorados, ausência de controle
 de rede e commits pendentes descrevem o momento das entregas anteriores;
 esta seção e o checklist da Parte 1 são a referência do estado atual.
+
+
+## UI/UX — repositório e painéis (22/11/2026)
+
+A área abaixo dos cabeçalhos foi reorganizada usando os dados já fornecidos
+pelas páginas e pela API, sem alterar serviços, permissões, modelos ou rotas.
+
+- Repositório: navegação para resultados/filtros, agrupamento dos seis filtros,
+  contador de filtros ativos, faixa de resultados, cartões com autor e orientação
+  identificados, palavras-chave navegáveis e acesso direto ao PDF final em nova aba.
+- Detalhe público: atalhos para resumo, palavras-chave e arquivo; informações do PDF
+  com melhor hierarquia visual e painel de leitura fixo em telas amplas.
+- Meu painel: navegação para visão geral/trabalhos/agenda, indicadores clicáveis,
+  filtros em área própria, seleção aplicada visível, cartões com situação e próximo
+  passo, identificação de aluno/orientador e ações destacadas.
+- Agenda: dia/mês em destaque, horário, modalidade, local e link de reunião quando
+  informado. Participações do professor destacam o estado do convite.
+- Estados vazios oferecem uma ação de continuidade; foco de teclado e margens
+  de rolagem evitam que o menu fixo cubra as seções. Layout adaptado ao celular.
+
+Os ícones são SVGs locais de apresentação em `templates/ui/icon.html`.
+As validações usam os testes existentes de interface e Chrome, com verificações
+adicionais de navegação pelos indicadores, faixa de paginação, temas clicáveis e
+posicionamento dos resultados. Capturas: `/tmp/allteam-ui-repositorio-painel/`.
+
+Validação concluída: **21 testes aprovados** (17 de interface e 4 cenários Chrome).
+Os 4 cenários Chrome também passaram após acrescentar verificações dos novos
+atalhos, filtros pelos indicadores, palavras-chave navegáveis e rolagem sob o
+menu fixo. `manage.py check`, sintaxe JavaScript e `git diff --check` passaram.
