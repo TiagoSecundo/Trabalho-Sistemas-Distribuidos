@@ -11,6 +11,7 @@ from equipe.models import Aluno
 from monografias.models import Avaliacao, Banca, HistoricoAcao, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .convites import emitir_token, validar_token
+from .agendamento import responder_convite_externo
 from .roles import obter_papeis, pode_convidar_para_banca
 
 
@@ -72,7 +73,7 @@ def emitir_convite_externo(usuario, pk):
         raise ValidationError({'participacao': 'Esta participação não é de membro externo.'})
     if participacao.banca.monografia.status_fluxo not in ('APROVADA_ORIENTADOR', 'BANCA_AGENDADA'):
         raise ValidationError({'monografia': 'A submissão precisa ser aprovada pelo orientador.'})
-    if participacao.banca.status != 'AGENDADA' or participacao.convite_status != 'CONVIDADO':
+    if participacao.banca.status not in ('PENDENTE', 'AGENDADA') or participacao.convite_status != 'CONVIDADO':
         raise ValidationError({'convite': 'Esta participação não está aguardando convite.'})
     token = emitir_token(participacao)
     HistoricoAcao.objects.create(
@@ -82,23 +83,9 @@ def emitir_convite_externo(usuario, pk):
     return participacao, token
 
 
-@transaction.atomic
-def confirmar_convite_externo(pk, token):
-    participacao = get_object_or_404(ParticipacaoBanca.objects.select_for_update(), pk=pk)
-    if (
-        participacao.membro_externo_id is None
-        or participacao.convite_status != 'CONVIDADO'
-        or participacao.banca.status != 'AGENDADA'
-        or not validar_token(participacao, token)
-    ):
-        raise PermissionDenied('Convite inválido, expirado ou já confirmado.')
-    participacao.convite_status = 'CONFIRMADO'
-    participacao.confirmado_em = timezone.now()
-    participacao.save(update_fields=['convite_status', 'confirmado_em'])
-    HistoricoAcao.objects.create(
-        ator=None, objeto=f'ParticipacaoBanca:{participacao.pk}',
-        acao='CONVITE_EXTERNO_CONFIRMADO', detalhes={'participacao_id': participacao.pk},
-    )
+def confirmar_convite_externo(pk, token, aceitar=True):
+    """O token autoriza apenas responder a um convite específico."""
+    return responder_convite_externo(pk, token, aceitar, validar_token)
 
 
 # B11 — decisões acadêmicas: média simples, nota mínima 6,00 e ressalvas

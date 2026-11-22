@@ -3,7 +3,7 @@ from rest_framework import serializers
 from Curso_Django.api import ModelSerializerValidado
 
 from .models import Avaliacao, Banca, MembroExterno, Monografia, ParticipacaoBanca
-from .services import AvaliacaoService, BancaService, MonografiaService
+from .services import AvaliacaoService, BancaService, MonografiaService, ParticipacaoBancaService
 
 
 class MonografiaSerializer(ModelSerializerValidado):
@@ -40,6 +40,7 @@ class MembroExternoSerializer(ModelSerializerValidado):
 
 
 class ParticipacaoBancaSerializer(ModelSerializerValidado):
+    service_class = ParticipacaoBancaService
     monografia_titulo = serializers.CharField(source='banca.monografia.titulo', read_only=True)
     participante_nome = serializers.SerializerMethodField()
     papel_descricao = serializers.CharField(source='get_papel_display', read_only=True)

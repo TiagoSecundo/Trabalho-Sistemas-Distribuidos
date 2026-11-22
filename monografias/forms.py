@@ -63,7 +63,8 @@ class ParticipacaoBancaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['banca'].queryset = Banca.objects.select_related('monografia')
+        if 'banca' in self.fields:
+            self.fields['banca'].queryset = Banca.objects.select_related('monografia')
 
 
 class AvaliacaoForm(forms.ModelForm):

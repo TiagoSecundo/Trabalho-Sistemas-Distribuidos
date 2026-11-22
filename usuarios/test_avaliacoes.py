@@ -27,7 +27,7 @@ class FluxoAvaliacaoTests(TestCase):
         cls.aluno = Aluno.objects.create(usuario=cls.aluno_user, nome='Aluno B11', matricula='B11-001', email='aluno-b11@example.com', curso=cls.curso)
         cls.monografia = Monografia.objects.create(titulo='TCC B11', resumo='Resumo', aluno=cls.aluno, curso=cls.curso, orientador=cls.orientador, status_fluxo='BANCA_AGENDADA')
         inicio = timezone.now() - timedelta(days=2)
-        cls.banca = Banca.objects.create(monografia=cls.monografia, inicio=inicio, fim=inicio+timedelta(hours=1), local='Sala 1')
+        cls.banca = Banca.objects.create(monografia=cls.monografia, inicio=inicio, fim=inicio+timedelta(hours=1), local='Sala 1', status='AGENDADA')
         cls.presidente = ParticipacaoBanca.objects.create(banca=cls.banca, professor=cls.orientador, papel='PRESIDENTE')
         cls.titular = ParticipacaoBanca.objects.create(banca=cls.banca, professor=cls.professor2, papel='AVALIADOR')
         cls.suplente = ParticipacaoBanca.objects.create(banca=cls.banca, professor=cls.professor3, papel='SUPLENTE')

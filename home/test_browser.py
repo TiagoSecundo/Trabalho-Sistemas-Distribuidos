@@ -109,15 +109,6 @@ class NavegadorTests(StaticLiveServerTestCase):
         monografia = self.cadastrar('/monografias/adicionar/', {'titulo': 'API para gestão de monografias', 'aluno': aluno['id'], 'curso': curso['id'], 'resumo': 'Estudo de integração entre Django, PostgreSQL e uma interface acadêmica.', 'palavras_chave': 'Django, API, monografias', 'orientador': professor['id']})
         self.editar(monografia, 'titulo', 'Gestão de monografias com Django')
         expect(self.page.locator('[data-values]')).to_contain_text('Django, API, monografias')
-        externo = self.cadastrar('/monografias/membros-externos/adicionar/', {'nome': 'Bruno Avaliador', 'email': 'bruno@example.com', 'instituicao': 'Universidade Parceira'})
-        self.editar(externo, 'instituicao', 'Instituto de Pesquisa')
-        banca = self.cadastrar('/monografias/bancas/adicionar/', {'monografia': monografia['id'], 'modalidade': 'PRESENCIAL', 'inicio': '2026-12-10T14:00', 'fim': '2026-12-10T15:00', 'local': 'Sala 10'})
-        self.editar(banca, 'local', 'Auditório')
-        expect(self.page.locator('[data-values]')).to_contain_text('14:00')
-        participacao = self.cadastrar('/monografias/participacoes-banca/adicionar/', {'banca': banca['id'], 'membro_externo': externo['id'], 'papel': 'AVALIADOR'})
-        self.editar(participacao, 'papel', 'PRESIDENTE')
-        avaliacao = self.cadastrar('/monografias/avaliacoes/adicionar/', {'participacao': participacao['id'], 'nota': '8.50', 'parecer': 'Trabalho bem fundamentado.', 'recomendacao': 'APROVADA'})
-        self.editar(avaliacao, 'parecer', 'Parecer revisado.')
 
         # Invariante de supervisão: erro junto ao campo, dados digitados preservados.
         self.abrir(monografia['editar'].replace('/0/', f"/{monografia['id']}/"))
@@ -125,6 +116,18 @@ class NavegadorTests(StaticLiveServerTestCase):
         self.enviar('PATCH', 400)
         expect(self.page.locator('#id_coorientador_api_error')).to_contain_text('diferentes')
         expect(self.page.locator('#id_titulo')).to_have_value('Gestão de monografias com Django')
+
+        externo = self.cadastrar('/monografias/membros-externos/adicionar/', {'nome': 'Bruno Avaliador', 'email': 'bruno@example.com', 'instituicao': 'Universidade Parceira'})
+        self.editar(externo, 'instituicao', 'Instituto de Pesquisa')
+        from monografias.models import Monografia
+        Monografia.objects.filter(pk=monografia['id']).update(status_fluxo='APROVADA_ORIENTADOR')
+        banca = self.cadastrar('/monografias/bancas/adicionar/', {'monografia': monografia['id'], 'modalidade': 'PRESENCIAL', 'inicio': '2026-12-10T14:00', 'fim': '2026-12-10T15:00', 'local': 'Sala 10'})
+        self.editar(banca, 'local', 'Auditório')
+        expect(self.page.locator('[data-values]')).to_contain_text('14:00')
+        participacao = self.cadastrar('/monografias/participacoes-banca/adicionar/', {'banca': banca['id'], 'membro_externo': externo['id'], 'papel': 'AVALIADOR'})
+        self.editar(participacao, 'papel', 'PRESIDENTE')
+        avaliacao = self.cadastrar('/monografias/avaliacoes/adicionar/', {'participacao': participacao['id'], 'nota': '8.50', 'parecer': 'Trabalho bem fundamentado.', 'recomendacao': 'APROVADA'})
+        self.editar(avaliacao, 'parecer', 'Parecer revisado.')
 
         # Dependência protegida: DELETE real não remove a monografia com banca.
         self.abrir(monografia['excluir'].replace('/0/', f"/{monografia['id']}/"))

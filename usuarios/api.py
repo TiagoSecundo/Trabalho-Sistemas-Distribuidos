@@ -98,5 +98,13 @@ class ConfirmarConviteExternoView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, pk):
-        confirmar_convite_externo(pk, request.data.get('token'))
-        return Response({'confirmado': True})
+        acao = request.data.get('acao', 'confirmar')
+        if acao not in ('confirmar', 'recusar'):
+            raise ValidationError({'acao': 'Escolha confirmar ou recusar.'})
+        try:
+            agendada = confirmar_convite_externo(pk, request.data.get('token'), aceitar=acao == 'confirmar')
+        except ModelValidationError as exc:
+            raise ValidationError(getattr(exc, 'message_dict', {'non_field_errors': exc.messages})) from exc
+        except OperacaoNaoPermitida as exc:
+            raise Conflito(str(exc)) from exc
+        return Response({'confirmado': acao == 'confirmar', 'recusado': acao == 'recusar', 'banca_agendada': agendada})

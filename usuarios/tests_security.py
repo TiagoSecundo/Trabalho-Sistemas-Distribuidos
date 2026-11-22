@@ -78,7 +78,7 @@ class SegurancaAcademicaTests(TestCase):
 
     def test_token_externo_expira_e_nao_e_reutilizado_para_confirmar(self):
         Monografia.objects.filter(pk=self.mono.pk).update(status_fluxo='APROVADA_ORIENTADOR')
-        banca = Banca.objects.create(monografia=self.mono, inicio=timezone.now()+timedelta(days=5), fim=timezone.now()+timedelta(days=5, hours=1), local='Sala 1')
+        banca = Banca.objects.create(monografia=self.mono, inicio=timezone.now()+timedelta(days=5), fim=timezone.now()+timedelta(days=5, hours=1), local='Sala 1', status='AGENDADA')
         externo = MembroExterno.objects.create(nome='Externo', email='ext@seg.example', instituicao='Outra')
         participacao = ParticipacaoBanca.objects.create(banca=banca, membro_externo=externo)
         self.client.force_login(self.admin_user)

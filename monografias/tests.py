@@ -25,7 +25,7 @@ class CRUDAcademicoTests(APITestCase):
         cls.monografia = Monografia.objects.create(titulo='Sistemas distribuídos', resumo='Resumo', aluno=cls.aluno, curso=cls.curso, orientador=cls.professor)
         cls.inicio = timezone.now().replace(microsecond=0) + timedelta(days=7)
         cls.fim = cls.inicio + timedelta(hours=1)
-        cls.banca = Banca.objects.create(monografia=cls.monografia, inicio=cls.inicio, fim=cls.fim, local='Sala 1')
+        cls.banca = Banca.objects.create(monografia=cls.monografia, inicio=cls.inicio, fim=cls.fim, local='Sala 1', status='AGENDADA')
         cls.participacao = ParticipacaoBanca.objects.create(banca=cls.banca, professor=cls.professor)
 
     def setUp(self):
@@ -74,7 +74,7 @@ class CRUDAcademicoTests(APITestCase):
         self.assertTrue(Monografia.objects.filter(pk=self.monografia.pk).exists())
 
     def test_crud_banca(self):
-        monografia = Monografia.objects.create(titulo='Outra', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor)
+        monografia = Monografia.objects.create(titulo='Outra', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
         self.verificar_crud('bancas', Banca, self.banca_payload(monografia.pk), 'local', 'Sala 3')
 
     def test_crud_avaliacao(self):
@@ -84,7 +84,9 @@ class CRUDAcademicoTests(APITestCase):
         self.verificar_crud('membros-externos', MembroExterno, {'nome': 'Felipe', 'email': 'felipe@example.com', 'instituicao': 'Universidade'}, 'instituicao', 'Instituto')
 
     def test_crud_participacao_banca(self):
-        self.verificar_crud('participacoes-banca', ParticipacaoBanca, {'banca': self.banca.pk, 'professor': self.outro_professor.pk}, 'papel', 'PRESIDENTE')
+        monografia = Monografia.objects.create(titulo='Outra banca', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
+        banca = Banca.objects.create(monografia=monografia, inicio=self.inicio, fim=self.fim, local='Sala 2')
+        self.verificar_crud('participacoes-banca', ParticipacaoBanca, {'banca': banca.pk, 'professor': self.outro_professor.pk}, 'papel', 'PRESIDENTE')
 
     def test_api_exige_autenticacao_e_perfil_administrativo(self):
         for recurso in ('alunos', 'professores', 'cursos', 'monografias', 'bancas', 'avaliacoes', 'membros-externos', 'participacoes-banca'):
@@ -185,11 +187,14 @@ class CRUDAcademicoTests(APITestCase):
         self.assertEqual(self.banca.fim, self.fim)
 
     def test_participacao_exige_um_unico_tipo_de_membro(self):
+        monografia = Monografia.objects.create(titulo='Outra banca', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
+        banca = Banca.objects.create(monografia=monografia, inicio=self.inicio, fim=self.fim, local='Sala 2')
+        ParticipacaoBanca.objects.create(banca=banca, professor=self.professor)
         externo = MembroExterno.objects.create(nome='Externo', email='externo@example.com', instituicao='Instituto')
         for valores in ({}, {'professor': self.professor.pk, 'membro_externo': externo.pk}, {'professor': self.professor.pk}):
-            response = self.client.post('/api/participacoes-banca/', {'banca': self.banca.pk, **valores}, format='json')
+            response = self.client.post('/api/participacoes-banca/', {'banca': banca.pk, **valores}, format='json')
             self.assertEqual(response.status_code, 400, response.data)
-        response = self.client.post('/api/participacoes-banca/', {'banca': self.banca.pk, 'membro_externo': externo.pk}, format='json')
+        response = self.client.post('/api/participacoes-banca/', {'banca': banca.pk, 'membro_externo': externo.pk}, format='json')
         self.assertEqual(response.status_code, 201, response.data)
         self.assertNotIn('token_hash', response.data)
 
@@ -227,7 +232,7 @@ class CRUDAcademicoTests(APITestCase):
 
     def test_constraints_tambem_protegem_gravacao_direta(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Banca.objects.create(monografia=self.monografia, inicio=self.inicio, fim=self.fim, local='Duplicada')
+            Banca.objects.create(monografia=self.monografia, inicio=self.inicio, fim=self.fim, local='Duplicada', status='AGENDADA')
         with self.assertRaises(IntegrityError), transaction.atomic():
             ParticipacaoBanca.objects.create(banca=self.banca)
         with self.assertRaises(IntegrityError), transaction.atomic():

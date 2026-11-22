@@ -27,6 +27,7 @@
 
 <section class="perfil-section mt-4">
     <h2>Bancas e participantes</h2>
+    {% if pode_propor_banca %}<a class="btn app-cta-btn mb-3" href="{% url 'usuarios:propor-banca' monografia.pk %}">+ Propor banca</a>{% endif %}
     {% for banca in bancas %}
     <article class="perfil-banca">
         <div class="perfil-work-top">
@@ -40,6 +41,13 @@
         <p><strong>Média final:</strong> {{ banca.media_final }} / 10 · <strong>Resultado:</strong> {{ monografia.get_status_fluxo_display }}</p>
         {% endif %}
 
+        {% if pode_convidar and banca.status == 'PENDENTE' %}
+        <p class="perfil-caption">Proposta aguardando confirmação dos participantes.</p>
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'usuarios:adicionar-participante' banca.pk %}">+ Incluir participante</a>
+        <form method="post" action="{% url 'usuarios:cancelar-proposta' banca.pk %}" class="mt-2">{% csrf_token %}
+            <button class="btn btn-outline-danger btn-sm" type="submit">Cancelar proposta</button>
+        </form>
+        {% endif %}
         {% if pode_convidar and banca.status == 'AGENDADA' and convite_liberado %}
         <form method="post" action="{% url 'usuarios:realizar-defesa' banca.pk %}" class="mt-2">
             {% csrf_token %}
@@ -57,8 +65,19 @@
                     <span>Nota: {{ participacao.avaliacao.nota }} · {{ participacao.avaliacao.get_recomendacao_display }}{% if participacao.avaliacao.finalizada_em %} · Finalizada{% endif %}</span>
                     {% endif %}
                 </div>
-                {% if pode_convidar and convite_liberado and banca.status == 'AGENDADA' and participacao.convite_status == 'CONVIDADO' and participacao.membro_externo_id %}
+                {% if pode_convidar and convite_liberado and banca.status != 'CANCELADA' and banca.status != 'REALIZADA' and participacao.convite_status == 'CONVIDADO' and participacao.membro_externo_id %}
                     <a href="{% url 'usuarios:emitir-convite' participacao.pk %}">Preparar convite</a>
+                {% endif %}
+                {% if banca.status == 'PENDENTE' and participacao.professor.usuario_id == user.pk and participacao.convite_status == 'CONVIDADO' %}
+                    <form method="post" action="{% url 'usuarios:responder-convite-interno' participacao.pk %}">{% csrf_token %}
+                        <button type="submit" name="acao" value="confirmar" class="btn btn-outline-success btn-sm">Confirmar presença</button>
+                        <button type="submit" name="acao" value="recusar" class="btn btn-outline-danger btn-sm">Recusar</button>
+                    </form>
+                {% endif %}
+                {% if pode_convidar and banca.status == 'PENDENTE' %}
+                    <form method="post" action="{% url 'usuarios:retirar-participante' participacao.pk %}">{% csrf_token %}
+                        <button type="submit" class="btn btn-link btn-sm">Retirar da proposta</button>
+                    </form>
                 {% endif %}
                 {% if banca.status == 'REALIZADA' and monografia.status_fluxo == 'DEFESA_REALIZADA' and participacao.professor.usuario_id == user.pk and participacao.papel != 'SUPLENTE' and participacao.convite_status != 'RECUSADO' %}
                     <a href="{% url 'usuarios:avaliar-participacao' participacao.pk %}">{% if participacao.avaliacao %}Editar minha avaliação{% else %}Registrar minha avaliação{% endif %}</a>

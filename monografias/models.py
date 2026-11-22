@@ -62,7 +62,7 @@ class Monografia(models.Model):
 
 class Banca(models.Model):
     MODALIDADES = (('PRESENCIAL', 'Presencial'), ('REMOTA', 'Remota'), ('HIBRIDA', 'Híbrida'))
-    STATUS = (('AGENDADA', 'Agendada'), ('REALIZADA', 'Realizada'), ('CANCELADA', 'Cancelada'))
+    STATUS = (('PENDENTE', 'Aguardando confirmações'), ('AGENDADA', 'Agendada'), ('REALIZADA', 'Realizada'), ('CANCELADA', 'Cancelada'))
 
     monografia = models.ForeignKey(Monografia, on_delete=models.PROTECT, related_name='bancas')
     inicio = models.DateTimeField()
@@ -70,13 +70,13 @@ class Banca(models.Model):
     local = models.CharField(max_length=255, blank=True)
     link = models.URLField(blank=True)
     modalidade = models.CharField(max_length=10, choices=MODALIDADES, default='PRESENCIAL')
-    status = models.CharField(max_length=10, choices=STATUS, default='AGENDADA', editable=False)
+    status = models.CharField(max_length=10, choices=STATUS, default='PENDENTE', editable=False)
 
     class Meta:
         ordering = ['inicio', 'pk']
         constraints = [
             models.CheckConstraint(condition=models.Q(fim__gt=models.F('inicio')), name='banca_intervalo_valido'),
-            models.UniqueConstraint(fields=['monografia'], condition=models.Q(status='AGENDADA'), name='banca_ativa_unica_por_monografia'),
+            models.UniqueConstraint(fields=['monografia'], condition=models.Q(status__in=['PENDENTE', 'AGENDADA']), name='banca_ativa_unica_por_monografia'),
         ]
 
     def clean(self):

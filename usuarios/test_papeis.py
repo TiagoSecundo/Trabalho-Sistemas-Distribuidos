@@ -29,11 +29,11 @@ class PapeisEscopoTests(TestCase):
         cls.orientada = Monografia.objects.create(titulo='Minha orientação', resumo='R', aluno=cls.aluno, curso=cls.curso, orientador=cls.prof, status_fluxo='APROVADA_ORIENTADOR')
         cls.avaliada = Monografia.objects.create(titulo='Minha participação como avaliador', resumo='R', aluno=cls.outro_aluno, curso=cls.outro_curso, orientador=cls.outro_prof, status_fluxo='APROVADA_ORIENTADOR')
         cls.privada = Monografia.objects.create(titulo='Trabalho sem vínculo', resumo='R', aluno=cls.outro_aluno, curso=cls.outro_curso, orientador=cls.outro_prof)
-        cls.banca = Banca.objects.create(monografia=cls.avaliada, inicio=timezone.now()+timedelta(days=5), fim=timezone.now()+timedelta(days=5, hours=1), local='Sala')
+        cls.banca = Banca.objects.create(monografia=cls.avaliada, inicio=timezone.now()+timedelta(days=5), fim=timezone.now()+timedelta(days=5, hours=1), local='Sala', status='AGENDADA')
         ParticipacaoBanca.objects.create(banca=cls.banca, professor=cls.prof)
         externo = MembroExterno.objects.create(nome='Convidado', email='ext@escopo.example', instituicao='Instituição')
         cls.convite = ParticipacaoBanca.objects.create(banca=cls.banca, membro_externo=externo)
-        banca_orientada = Banca.objects.create(monografia=cls.orientada, inicio=timezone.now()+timedelta(days=6), fim=timezone.now()+timedelta(days=6, hours=1), local='Sala')
+        banca_orientada = Banca.objects.create(monografia=cls.orientada, inicio=timezone.now()+timedelta(days=6), fim=timezone.now()+timedelta(days=6, hours=1), local='Sala', status='AGENDADA')
         cls.convite_orientado = ParticipacaoBanca.objects.create(banca=banca_orientada, membro_externo=externo)
 
     def test_staff_nao_libera_nenhum_crud_administrativo(self):
