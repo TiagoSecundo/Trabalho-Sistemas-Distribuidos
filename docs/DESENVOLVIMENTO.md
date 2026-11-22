@@ -1002,3 +1002,16 @@ A migração de notificações foi aplicada no banco local e o consumidor está 
 Nenhum agendamento ou publicação foi criado no banco principal de desenvolvimento:
 a demonstração usou `test_curso_django_dev` e um microserviço/PostgreSQL descartáveis.
 Os e-mails fictícios permanecem visíveis no Mailpit para apresentação.
+
+
+### Fechamento Git da Parte 1
+
+O commit principal `affafe4`, já enviado para a branch remota pelo integrante,
+foi preservado. O fechamento documental registra a integração dessa branch à
+`main` local. No microserviço original, a `main` recebeu o merge `9ee83f6`,
+contendo `a171803` e `b9dd9bb`. Não houve push automático desses merges locais.
+O histórico e a situação de compartilhamento estão em `COMMITS.md`.
+
+As afirmações históricas acima sobre documentos ignorados, ausência de controle
+de rede e commits pendentes descrevem o momento das entregas anteriores;
+esta seção e o checklist da Parte 1 são a referência do estado atual.

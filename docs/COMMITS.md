@@ -1,5 +1,37 @@
 # Registro dos commits e das entregas
 
+## Fechamento da Parte 1 — 22/11/2026
+
+A implementação principal foi preservada no commit `affafe4`, já presente em
+`origin/feature/pendencias-parte-1`. Este fechamento atualiza as referências e
+integra a branch na `main` local com merge `--no-ff`.
+
+O microserviço recebeu `a171803` (extração por submissão, integridade e acesso)
+e `b9dd9bb` (proteção do contexto Docker), integrados à sua `main` local pelo
+merge **`9ee83f6`**. A cópia de trabalho original fica em
+`/home/tiago-secundo/Projects/microservico-sd`; o worktree isolado de validação
+foi mantido em `/tmp/microservico-parte1`.
+
+Entregue: extração privada por versão via RabbitMQ, avisos de banca via
+RabbitMQ/SMTP, rede administrativa configurável, bloqueio das escritas
+acadêmicas pelo CRUD legado/admin, integridade na leitura/aprovação,
+recuperação de senha e auditoria. A rede local aprovada foi configurada no
+`.env`; a caixa de testes é o Mailpit em `http://127.0.0.1:8025`.
+
+Validação: regressão com Chrome, RabbitMQ e HTTP real: **226 descobertos,
+224 aprovados, 2 opcionais ignorados nessa campanha**. Os dois cenários
+integrados P1 foram aprovados separadamente; o terceiro cenário de perda
+real da resposta HTTP também passou. A descoberta final soma **227 testes**.
+Microserviço: **20 aprovados**. Migrações, `check`, JavaScript e verificação
+de whitespace conferidos. Evidências e limites em `DESENVOLVIMENTO.md`, seção
+Parte 1, e no checklist `PENDENCIAS_PARTE_1_SISTEMA_MONOGRAFIAS.md`.
+
+**Entrega remota:** a branch principal com `affafe4` já estava no remoto ao
+retomar o fechamento. Os merges locais e os commits do microserviço ainda
+precisam de push para compartilhamento com o grupo; não foram publicados
+automaticamente. O fechamento técnico P1-01–P1-09 está concluído. Redis de
+sessões/busca, gráficos, carga e eventos adicionais permanecem na Parte 2.
+
 ## Entrega local de interface, B12 e B13 — 22/11/2026
 
 Base: `aca1766`, após atualizar `origin` e conferir a integração anterior.

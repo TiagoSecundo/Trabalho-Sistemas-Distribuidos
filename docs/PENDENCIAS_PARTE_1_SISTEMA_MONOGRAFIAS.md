@@ -7,7 +7,7 @@
 
 **Fechamento técnico:** P1-01 a P1-09 implementados e comprovados localmente. A demonstração usa a rede local escolhida pelo usuário e SMTP de testes. A entrega Git está registrada em `COMMITS.md`; requisitos exclusivos da Parte 2 continuam separados.
 
-> **Reconciliação em 22/11/2026:** B12 e B13 conferidos no código e nos testes; entrega `2fb7743`, integrada à `main` pelo merge `efb12ce`. Esta revisão antecede a implementação das pendências restantes. Ainda não houve push.
+> **Reconciliação em 22/11/2026:** B12 e B13 conferidos no código e nos testes; entrega `2fb7743`, integrada à `main` pelo merge `efb12ce`. Essa foi a situação inicial; as pendências restantes foram implementadas no principal em `affafe4` (já presente no remoto da branch). No microserviço, `a171803`/`b9dd9bb` foram integrados pelo merge local `9ee83f6`. Consulte `COMMITS.md` para o fechamento e a entrega remota.
 >
 > **Fontes de conferência históricas:** enunciado original do professor, código disponibilizado em `Trabalho SC(4).zip`, alterações B09/B10/B11 aplicadas posteriormente e resultados dos testes informados na conversa. Não houve uma nova auditoria independente dos commits posteriores feitos por outros integrantes.
 >
@@ -253,5 +253,7 @@ O professor detalha na **Parte 2 — REST API com Django REST Framework**:
 4. Publicação bloqueada quando faltarem termo/correção/aprovação; busca anônima mostra somente TCCs publicados.
 5. Acesso externo por token e controle IP/VPN administrativo demonstrados.
 6. Commits e *push* documentados para ambos os repositórios, com a versão efetivamente usada pelo grupo.
+
+**Entrega Git:** implementação principal em `affafe4`; integração local concluída nesta revisão. Microserviço na `main` local em `9ee83f6`. O push dos merges locais e do microserviço permanece pendente; portanto, o item 6 de entrega ao grupo ainda não está encerrado.
 
 **Recomendação:** manter este documento como referência da **Parte 1**. Quando um colega concluir uma tarefa, marcar a caixa, acrescentar o commit e um teste/evidência, em vez de abrir uma nova lista de pendências.
