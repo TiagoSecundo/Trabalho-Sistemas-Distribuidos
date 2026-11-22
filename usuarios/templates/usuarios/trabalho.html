@@ -68,6 +68,9 @@
                 {% if pode_convidar and convite_liberado and banca.status != 'CANCELADA' and banca.status != 'REALIZADA' and participacao.convite_status == 'CONVIDADO' and participacao.membro_externo_id %}
                     <a href="{% url 'usuarios:emitir-convite' participacao.pk %}">Preparar convite</a>
                 {% endif %}
+                {% if pode_convidar and banca.status == 'REALIZADA' and monografia.status_fluxo == 'DEFESA_REALIZADA' and participacao.membro_externo_id and participacao.convite_status == 'CONFIRMADO' and participacao.papel != 'SUPLENTE' %}
+                    <a href="{% url 'usuarios:emitir-avaliacao-externa' participacao.pk %}">Gerar acesso de avaliação externa</a>
+                {% endif %}
                 {% if banca.status == 'PENDENTE' and participacao.professor.usuario_id == user.pk and participacao.convite_status == 'CONVIDADO' %}
                     <form method="post" action="{% url 'usuarios:responder-convite-interno' participacao.pk %}">{% csrf_token %}
                         <button type="submit" name="acao" value="confirmar" class="btn btn-outline-success btn-sm">Confirmar presença</button>

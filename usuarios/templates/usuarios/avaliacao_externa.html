@@ -1,0 +1,27 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Avaliação externa · AllTeam{% endblock %}
+{% block perfil_content %}
+<section class="crud-form-shell perfil-section">
+    <span class="perfil-eyebrow">B11 · Avaliador externo</span>
+    <h1>Registrar avaliação da banca</h1>
+    {% if enviada %}
+        <div class="alert alert-success" role="status">Sua avaliação foi registrada com sucesso. O código utilizado já não é válido.</div>
+        <p>A coordenação poderá finalizar o resultado quando receber todas as avaliações.</p>
+    {% else %}
+        <p>Informe o código individual recebido da coordenação, sua nota (0 a 10), o parecer e uma recomendação. A média mínima de aprovação adotada pelo grupo é 6,0.</p>
+        <form method="post" class="crud-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+            {% for campo in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                    {{ campo }}
+                    {% if campo.help_text %}<small class="form-text text-muted">{{ campo.help_text }}</small>{% endif %}
+                    {% if campo.errors %}<div class="text-danger">{{ campo.errors }}</div>{% endif %}
+                </div>
+            {% endfor %}
+            <button class="btn app-cta-btn" type="submit">Enviar minha avaliação</button>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

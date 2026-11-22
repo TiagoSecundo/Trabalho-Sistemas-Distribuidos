@@ -18,11 +18,12 @@ from equipe.models import Aluno, Curso, Professor
 from monografias.models import Avaliacao, Banca, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .consultas import monografias_visiveis
-from .forms import AvaliacaoPropriaForm, ConfirmarConviteForm, RascunhoAlunoForm, PropostaBancaForm, ParticipantePropostaForm
+from .forms import AvaliacaoExternaForm, AvaliacaoPropriaForm, ConfirmarConviteForm, RascunhoAlunoForm, PropostaBancaForm, ParticipantePropostaForm
 from .roles import obter_papeis, pode_convidar_para_banca
 from .agendamento import (
     adicionar_participante, cancelar_proposta, propor_banca, responder_convite_interno, retirar_participante,
 )
+from .avaliacao_externa import emitir_codigo_avaliacao_externa, registrar_avaliacao_externa
 from .services import (
     calcular_resultado_banca, confirmar_convite_externo, emitir_convite_externo,
     excluir_rascunho, exigir_aluno, finalizar_resultado_banca,
@@ -280,6 +281,50 @@ def avaliar_participacao(request, pk):
             form.add_error(None, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
     context.update({'participacao': participacao, 'form': form})
     return render(request, 'usuarios/avaliar.html', context)
+
+
+@never_cache
+@login_required
+@require_http_methods(['GET', 'POST'])
+def emitir_codigo_avaliacao_externa_view(request, pk):
+    participacao = get_object_or_404(
+        ParticipacaoBanca.objects.select_related('banca__monografia'),
+        pk=pk, membro_externo__isnull=False,
+    )
+    if not pode_convidar_para_banca(request.user, participacao.banca.monografia):
+        raise Http404
+    context = contexto_perfil(request)
+    context.update({
+        'participacao': participacao,
+        'url_avaliacao': request.build_absolute_uri(reverse('usuarios:avaliacao-externa', args=[pk])),
+    })
+    codigo_http = 200
+    if request.method == 'POST':
+        try:
+            participacao, codigo = emitir_codigo_avaliacao_externa(request.user, pk)
+            context.update({'codigo_avaliacao': codigo, 'expira_em': participacao.avaliacao_expira_em})
+        except (OperacaoNaoPermitida, ValidationError) as exc:
+            context['erro'] = ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
+            codigo_http = 409
+    return render(request, 'usuarios/emitir_avaliacao_externa.html', context, status=codigo_http)
+
+
+@never_cache
+@require_http_methods(['GET', 'POST'])
+def avaliacao_externa_view(request, pk):
+    # A página pública não identifica o trabalho nem o participante sem código válido.
+    form = AvaliacaoExternaForm(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            registrar_avaliacao_externa(pk, form.cleaned_data['codigo'], form.cleaned_data)
+            return render(request, 'usuarios/avaliacao_externa.html', {'enviada': True})
+        except (PermissionDenied, Http404):
+            form.add_error('codigo', 'Código inválido ou expirado. Solicite um novo código à coordenação.')
+            return render(request, 'usuarios/avaliacao_externa.html', {'form': form}, status=403)
+        except (OperacaoNaoPermitida, ValidationError) as exc:
+            form.add_error(None, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
+            return render(request, 'usuarios/avaliacao_externa.html', {'form': form}, status=409)
+    return render(request, 'usuarios/avaliacao_externa.html', {'form': form})
 
 
 @never_cache
