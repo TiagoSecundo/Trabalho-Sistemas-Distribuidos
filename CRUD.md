@@ -1,7 +1,7 @@
 # CRUD administrativo e API acadêmica
 
 Revisado em **20/11/2026**, após `5f7857b` e a entrega dos painéis por perfil. Este documento descreve as rotas implementadas; as ações
-ainda propostas no PDF são acompanhadas em [PENDENCIAS.md](PENDENCIAS.md).
+ainda propostas no PDF são acompanhadas em [backlog geral](docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md).
 
 Esta entrega implementa a modelagem e o CRUD básico das seções 3 e 4 do
 `Plano_Refatoracao_CRUD_API_Monografias.pdf`. O padrão original foi mantido:
@@ -96,9 +96,11 @@ ou Professor nem permite atribuir privilégios.
 | Membro externo (apoio) | `/api/membros-externos/` |
 | Participação em banca (apoio) | `/api/participacoes-banca/` |
 
-Todas as coleções oferecem `GET` para listar e `POST` para criar. Acrescente
-`{id}/` para `GET`, `PUT`, `PATCH` e `DELETE`. `PUT` exige todos os campos
-obrigatórios; `PATCH` aceita apenas os campos alterados.
+Todas as coleções oferecem `GET` para listar e consultar `{id}/`. Somente alunos,
+professores, cursos e membros externos oferecem `POST`, `PUT`, `PATCH` e `DELETE`
+administrativos. Monografias, bancas, participações e avaliações retornam **403**
+para escritas genéricas; use as ações acadêmicas abaixo. Acesso administrativo
+também exige a rede configurada em `ADMIN_ALLOWED_NETWORKS`.
 
 Respostas: 201 ao criar, 200 ao consultar/editar, 204 ao excluir, 400 para dados
 inválidos, 401/403 para acesso negado, 404 para ID inexistente e 409 para exclusão
@@ -141,36 +143,37 @@ Aluno:
 {"nome":"João Souza","matricula":"2026001","email":"joao@example.com","curso":1,"orientador_atual":1}
 ```
 
-Monografia:
+Rascunho, como aluno vinculado, em `POST /api/usuarios/rascunhos/`:
 
 ```json
-{"titulo":"API de monografias","resumo":"Descrição do trabalho","palavras_chave":["Django","TCC"],"aluno":1,"curso":1,"orientador":1}
+{"titulo":"API de monografias","resumo":"Descrição do trabalho","palavras_chave":["Django","TCC"],"orientador":1}
 ```
 
-Banca:
+Proposta, após aprovação, em `POST /api/usuarios/monografias/1/propor-banca/`:
 
 ```json
-{"monografia":1,"inicio":"2026-12-10T14:00:00-03:00","fim":"2026-12-10T15:00:00-03:00","modalidade":"PRESENCIAL","local":"Sala 10"}
+{"inicio":"2026-12-10T14:00:00-03:00","fim":"2026-12-10T15:00:00-03:00","modalidade":"PRESENCIAL","local":"Sala 10"}
 ```
 
-Participação em banca:
+Participação, como responsável, em `POST /api/usuarios/bancas/1/participantes/`:
 
 ```json
-{"banca":1,"professor":1,"papel":"AVALIADOR"}
+{"professor":1,"papel":"AVALIADOR"}
 ```
 
 Para avaliador externo, cadastre nome, email e instituição em
 `/api/membros-externos/`, e use `membro_externo` na participação, em vez de
 `professor`. Cada participação deve ter exatamente um desses dois vínculos.
 
-Avaliação:
+Avaliação do próprio professor, depois da defesa, em `POST /api/usuarios/participacoes/1/avaliacao/`:
 
 ```json
-{"participacao":1,"nota":"8.50","parecer":"Trabalho adequado.","recomendacao":"APROVADA"}
+{"nota":"8.50","parecer":"Trabalho adequado.","recomendacao":"APROVADA"}
 ```
 
-A nota foi representada na escala de 0 a 10, com duas casas decimais. Não há
-nota mínima de aprovação, cálculo de média ou fechamento automático nesta etapa.
+A nota usa escala de 0 a 10, com duas casas decimais. B11 calcula média simples,
+exige todas as avaliações titulares e usa mínimo 6,00. Após fechamento, notas
+e pareceres não podem ser alterados.
 As recomendações aceitas são `APROVADA`, `APROVADA_COM_RESSALVAS` e `REPROVADA`.
 
 ## API acadêmica: identidade e monografias
@@ -316,8 +319,9 @@ transação. Login/logout são auditados via sinais, não por uma auditoria gen�
 de toda autenticação HTTP Basic.
 
 Ainda não há endpoint/tela de histórico nem política de retenção. Escrita
-direta no ORM, mudanças de grupos e operações dos models no Django admin não
-têm garantia de passar pelos helpers. A referência textual usa formatos
+direta no ORM não passa pelos helpers. Cadastros do Django Admin geram
+`ADMIN_CRIACAO`, `ADMIN_ATUALIZACAO`, `ADMIN_EXCLUSAO`; mudanças de contas/grupos
+também ficam no `LogEntry` nativo. Escritas acadêmicas no admin são bloqueadas. A referência textual usa formatos
 diferentes entre CRUD e ações acadêmicas; sua padronização está pendente.
 
 ## Limites desta entrega
@@ -328,16 +332,11 @@ uma banca agendada por trabalho, um participante por banca e uma avaliação por
 participante. Uma participação avaliada não pode trocar de avaliador, papel ou
 banca. Isso não valida disponibilidade da comissão nem habilitação para avaliar.
 
-Status e datas de processo são somente leitura. Monografias novas começam em
-`RASCUNHO`; bancas em `AGENDADA`; participações em `CONVIDADO`. Monografias fora
-de RASCUNHO, bancas realizadas/canceladas e avaliações finalizadas não podem
-ser alteradas/excluídas pelos respectivos CRUDs de negócio.
-
-O cadastro administrativo de banca ainda aceita trabalho sem aprovação de
-orientação; o de avaliação não exige defesa realizada nem autoria do avaliador.
-Essas guardas precisam entrar nos serviços dos processos B09–B11. As classes
-`IsOrientadorMonografia`, `IsCoordenadorMonografia` e `IsProfessorAvaliador`
-existem, mas ainda não estão conectadas a endpoints de aprovação/avaliação.
+Status e datas de processo são somente leitura. Rascunhos nascem em `RASCUNHO`,
+propostas em `PENDENTE` e participações em `CONVIDADO`. B10 exige orientação
+aprovada, confirmações e ausência de conflito antes de agendar. B11 exige defesa
+realizada, autoria do avaliador e resultado aberto. Rotas administrativas genéricas
+e Django Admin mantêm esses registros apenas para consulta.
 
 As ações acadêmicas B09–B11 implementam submissão, aprovação/devolução,
 realização e fechamento do resultado. B12 acrescenta documentos privados,
@@ -432,9 +431,9 @@ microserviço continuam pendentes.
 | Membros externos | `/monografias/membros-externos/` |
 | Avaliações | `/monografias/avaliacoes/` |
 
-Todas as páginas de gestão acima exigem papel Administrador. Cada página oferece busca,
-paginação, consulta, cadastro, edição e confirmação
-de exclusão. O navegador faz GET/POST/PATCH/DELETE nos endpoints acima, usando
+Todas as páginas de gestão acima exigem Administrador e rede autorizada. Oferecem
+busca, paginação e consulta. Cadastro, edição e exclusão ficam disponíveis apenas
+para alunos, professores, cursos e membros externos. O navegador usa os métodos permitidos, com
 sessão e CSRF, e mostra erros junto aos campos. Relações aparecem por nome;
 opções dos formulários são geradas pelo Django e incluem todos os registros.
 Os endereços antigos de monografias e de adicionar integrantes foram preservados.

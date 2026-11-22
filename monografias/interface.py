@@ -58,6 +58,9 @@ def recurso(tipo='monografias'):
     if tipo not in RECURSOS:
         raise Http404('Recurso inexistente.')
     config = dict(RECURSOS[tipo])
+    config['somente_consulta'] = tipo != 'membros-externos'
+    if config['somente_consulta']:
+        config['ajuda'] = 'Consulta administrativa. As alterações são realizadas pelo responsável nas ações do painel acadêmico.'
     config['lista_url'] = url_lista(tipo)
     for acao in ('adicionar', 'detalhes', 'editar', 'excluir'):
         args = [] if tipo == 'monografias' else [tipo]

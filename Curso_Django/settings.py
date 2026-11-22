@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'equipe',
     'monografias',
     'repositorio',
+    'notificacoes',
     'allauth',
     'allauth.account',
     'usuarios.apps.UsuariosConfig',
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'usuarios.rede.RedeAdministrativaMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -181,10 +183,19 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_FORMS = {'signup': 'usuarios.forms.CadastroContaForm'}
 
-# Apenas durante o desenvolvimento
-EMAIL_BACKEND = (
-    'django.core.mail.backends.console.EmailBackend'
-)
+# SMTP configurável; o ambiente local usa uma caixa de testes sem entrega externa.
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '127.0.0.1')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '1025'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', '0') == '1'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', '0') == '1'
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AllTeam <avisos@allteam.test>')
+
+ADMIN_ALLOWED_NETWORKS = os.environ.get('ADMIN_ALLOWED_NETWORKS', '127.0.0.1/32,::1/128').split(',')
+ADMIN_TRUSTED_PROXIES = os.environ.get('ADMIN_TRUSTED_PROXIES', '').split(',')
 
 # Camada adicional de segurança. Reverse proxy deve impor HTTPS no ambiente real.
 SECURE_SSL_REDIRECT = not DEBUG
@@ -212,3 +223,5 @@ RABBITMQ_URL = os.environ.get('RABBITMQ_URL', '')
 REPOSITORIO_FILA = os.environ.get('REPOSITORIO_FILA', 'allteam.repositorio.indexar')
 REPOSITORIO_MAX_TEXTO = 1000000
 REPOSITORIO_MAX_TENTATIVAS = 3
+NOTIFICACOES_FILA = os.environ.get('NOTIFICACOES_FILA', 'allteam.bancas.notificar')
+NOTIFICACOES_MAX_TENTATIVAS = 3

@@ -58,6 +58,8 @@ def _agendar_se_confirmado(usuario, banca):
     monografia.status_fluxo = 'BANCA_AGENDADA'
     monografia.save(update_fields=['status_fluxo'])
     _auditar(usuario, f'Banca:{banca.pk}', 'BANCA_AGENDADA', banca_id=banca.pk, monografia_id=monografia.pk)
+    from notificacoes.services import registrar_agendamento
+    registrar_agendamento(banca)
     return True
 
 

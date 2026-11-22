@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django import forms
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
@@ -31,6 +31,7 @@ def exibir(valor, campo):
 
 def contexto(config):
     api = {
+        'somenteConsulta': config.get('somente_consulta', False),
         'endpoint': reverse(f"{config['api']}-list"),
         'colunas': config['colunas'],
         'campos': config.get('campos', config['colunas']),
@@ -69,6 +70,8 @@ def preparar_formulario(form):
 
 
 def formulario(request, config, pk=None, template='crud/formulario.html'):
+    if config.get('somente_consulta'):
+        raise PermissionDenied('Use as ações do painel acadêmico do responsável.')
     instance = get_object_or_404(config['queryset'].all(), pk=pk) if pk else None
     form = config['form'](request.POST if request.method == 'POST' else None, instance=instance)
     context = contexto(config)
@@ -109,6 +112,8 @@ def detalhes(request, config, pk, template='crud/detalhes.html'):
     context['objeto'] = instance
     dados = config['serializer'](instance).data
     context['valores'] = [(label, exibir(dados.get(campo), campo)) for campo, label in context['api_config']['campos']]
+    if config.get('somente_consulta'):
+        context['bloqueio'] = config['ajuda']
     context['editar_url'] = url_objeto(config['editar_url'], pk)
     context['excluir_url'] = url_objeto(config['excluir_url'], pk)
     try:
@@ -119,6 +124,8 @@ def detalhes(request, config, pk, template='crud/detalhes.html'):
 
 
 def excluir(request, config, pk, template='crud/excluir.html'):
+    if config.get('somente_consulta'):
+        raise PermissionDenied('Use as ações do painel acadêmico do responsável.')
     instance = get_object_or_404(config['queryset'].all(), pk=pk)
     context = contexto(config)
     context['objeto'] = instance
@@ -128,8 +135,8 @@ def excluir(request, config, pk, template='crud/excluir.html'):
         config['serializer'].service_class.validar_alteracao(instance)
         if request.method == 'POST':
             with transaction.atomic():
-                config['serializer'].service_class.excluir(instance)
                 registrar_acao(request.user, instance, 'CRUD_EXCLUSAO')
+                config['serializer'].service_class.excluir(instance)
             messages.success(request, 'Cadastro excluído com sucesso.')
             return redirect(config['lista_url'])
     except OperacaoNaoPermitida as exc:

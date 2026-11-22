@@ -117,7 +117,7 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         ))
         self.abrir('/api/')
         self.page.get_by_role('link', name='Entrar', exact=True).click()
-        expect(self.page.locator('h1')).to_have_text('Acesse sua conta')
+        expect(self.page.locator('#id_login')).to_be_visible()
         self.screenshot('login-desktop.png')
         self.page.set_viewport_size({'width': 390, 'height': 844})
         self.screenshot('login-mobile.png')
@@ -158,9 +158,9 @@ class PerfisNavegadorTests(StaticLiveServerTestCase):
         from playwright.sync_api import expect
 
         self.abrir('/accounts/login/')
-        self.page.get_by_role('link', name='Criar conta', exact=True).click()
+        self.page.get_by_role('link', name='Criar minha conta', exact=False).click()
         self.page.wait_for_url(self.live_server_url + '/accounts/signup/')
-        expect(self.page.locator('h1')).to_have_text('Crie sua conta')
+        expect(self.page.get_by_role('heading', name='Crie sua conta', exact=True)).to_be_visible()
         self.screenshot('cadastro-desktop.png')
         self.page.set_viewport_size({'width': 390, 'height': 844})
         self.screenshot('cadastro-mobile.png')

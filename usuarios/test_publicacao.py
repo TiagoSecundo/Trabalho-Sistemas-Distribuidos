@@ -307,8 +307,8 @@ class PublicacaoTests(CenarioPublicacao, TestCase):
         self.assertEqual(self.enviar().status_code, 409)
         self.assertEqual(self.conferir(publicacao.termo, decisao='rejeitar', motivo='Tarde').status_code, 409)
         self.client.force_login(self.admin)
-        self.assertEqual(self.client.patch(f'/api/monografias/{self.m.pk}/', {'titulo': 'Alterado'}, content_type='application/json').status_code, 409)
-        self.assertEqual(self.client.delete(f'/api/monografias/{self.m.pk}/').status_code, 409)
+        self.assertEqual(self.client.patch(f'/api/monografias/{self.m.pk}/', {'titulo': 'Alterado'}, content_type='application/json').status_code, 403)
+        self.assertEqual(self.client.delete(f'/api/monografias/{self.m.pk}/').status_code, 403)
         for model, pk in (('monografia', self.m.pk), ('banca', publicacao.banca_id), ('documentocomplementar', publicacao.termo_id), ('publicacao', publicacao.pk)):
             self.assertEqual(self.client.post(f'/admin/monografias/{model}/{pk}/change/', {'titulo': 'Alterado'}).status_code, 403)
             self.assertEqual(self.client.post(f'/admin/monografias/{model}/{pk}/delete/', {'post': 'yes'}).status_code, 403)
@@ -320,7 +320,7 @@ class PublicacaoTests(CenarioPublicacao, TestCase):
         extra = ParticipacaoBanca.objects.create(banca=banca, professor=self.coordenador, papel='SUPLENTE')
         self.client.force_login(self.admin)
         response = self.client.post('/api/avaliacoes/', {'participacao': extra.pk, 'nota': '10.00', 'parecer': 'Injetado', 'recomendacao': 'APROVADA'})
-        self.assertEqual(response.status_code, 409, response.content)
+        self.assertEqual(response.status_code, 403, response.content)
 
     def test_ata_e_comprovante_opcionais_nao_substituem_termo(self):
         self.assertEqual(self.enviar('ATA').status_code, 403)

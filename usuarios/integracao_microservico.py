@@ -23,6 +23,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from Curso_Django.services import OperacaoNaoPermitida
 from monografias.models import HistoricoAcao, Monografia
+from .tokens import assinar_token
 
 ESTADOS_SUBMISSAO = ('RASCUNHO', 'SUBMETIDA', 'EM_ANALISE_ORIENTADOR', 'AJUSTES_SOLICITADOS', 'APROVADA_ORIENTADOR')
 ESTADOS_EDITAVEIS = ('RASCUNHO', 'AJUSTES_SOLICITADOS')
@@ -52,7 +53,7 @@ def _token(usuario, monografia, papel):
     token['curso_id'] = monografia.curso_id
     token['curso_ids'] = []
     token['scope'] = 'integracao:origem'
-    return str(token)
+    return assinar_token(token)
 
 
 def _requisicao(metodo, caminho, token, *, dados=None, arquivo=None, stream=False):

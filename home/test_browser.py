@@ -11,6 +11,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import tag
 
 from equipe.models import Professor
+from usuarios.browser_helpers import banco
 
 
 @tag('browser')
@@ -96,7 +97,7 @@ class NavegadorTests(StaticLiveServerTestCase):
             Path(destino).mkdir(parents=True, exist_ok=True)
             self.page.screenshot(path=str(Path(destino) / nome), full_page=True)
 
-    def test_crud_dos_oito_recursos_com_busca_paginacao_e_erros(self):
+    def test_crud_cadastral_e_consulta_academica_com_busca_e_paginacao(self):
         from playwright.sync_api import expect
 
         self.entrar()
@@ -106,36 +107,16 @@ class NavegadorTests(StaticLiveServerTestCase):
         self.editar(curso, 'codigo', 'COMP')
         aluno = self.cadastrar('/equipe/adicionar/?tipo=aluno', {'nome': 'Carla Silva', 'matricula': '2026001', 'email': 'carla@example.com', 'curso': curso['id'], 'orientador_atual': professor['id']})
         self.editar(aluno, 'nome', 'Carla Souza')
-        monografia = self.cadastrar('/monografias/adicionar/', {'titulo': 'API para gestão de monografias', 'aluno': aluno['id'], 'curso': curso['id'], 'resumo': 'Estudo de integração entre Django, PostgreSQL e uma interface acadêmica.', 'palavras_chave': 'Django, API, monografias', 'orientador': professor['id']})
-        self.editar(monografia, 'titulo', 'Gestão de monografias com Django')
-        expect(self.page.locator('[data-values]')).to_contain_text('Django, API, monografias')
-
-        # Invariante de supervisão: erro junto ao campo, dados digitados preservados.
-        self.abrir(monografia['editar'].replace('/0/', f"/{monografia['id']}/"))
-        self.preencher({'coorientador': professor['id']})
-        self.enviar('PATCH', 400)
-        expect(self.page.locator('#id_coorientador_api_error')).to_contain_text('diferentes')
-        expect(self.page.locator('#id_titulo')).to_have_value('Gestão de monografias com Django')
-
         externo = self.cadastrar('/monografias/membros-externos/adicionar/', {'nome': 'Bruno Avaliador', 'email': 'bruno@example.com', 'instituicao': 'Universidade Parceira'})
         self.editar(externo, 'instituicao', 'Instituto de Pesquisa')
         from monografias.models import Monografia
-        Monografia.objects.filter(pk=monografia['id']).update(status_fluxo='APROVADA_ORIENTADOR')
-        banca = self.cadastrar('/monografias/bancas/adicionar/', {'monografia': monografia['id'], 'modalidade': 'PRESENCIAL', 'inicio': '2026-12-10T14:00', 'fim': '2026-12-10T15:00', 'local': 'Sala 10'})
-        self.editar(banca, 'local', 'Auditório')
-        expect(self.page.locator('[data-values]')).to_contain_text('14:00')
-        participacao = self.cadastrar('/monografias/participacoes-banca/adicionar/', {'banca': banca['id'], 'membro_externo': externo['id'], 'papel': 'AVALIADOR'})
-        self.editar(participacao, 'papel', 'PRESIDENTE')
-        avaliacao = self.cadastrar('/monografias/avaliacoes/adicionar/', {'participacao': participacao['id'], 'nota': '8.50', 'parecer': 'Trabalho bem fundamentado.', 'recomendacao': 'APROVADA'})
-        self.editar(avaliacao, 'parecer', 'Parecer revisado.')
-
-        # Dependência protegida: DELETE real não remove a monografia com banca.
-        self.abrir(monografia['excluir'].replace('/0/', f"/{monografia['id']}/"))
-        with self.page.expect_response(lambda response: response.request.method == 'DELETE') as pending:
-            self.page.get_by_role('button', name='Confirmar exclusão').click()
-        self.assertEqual(pending.value.status, 409)
-        expect(self.page.locator('[data-api-error]')).to_contain_text('em uso')
-
+        trabalho = banco(lambda: Monografia.objects.create(titulo='Consulta acadêmica', resumo='Resumo',
+            aluno_id=aluno['id'], curso_id=curso['id'], orientador_id=professor['id']))
+        self.abrir('/monografias/')
+        expect(self.page.locator('[data-count]')).to_contain_text('1 registro(s)')
+        expect(self.page.get_by_role('link', name='Adicionar monografia')).to_have_count(0)
+        expect(self.page.locator('[data-rows]').get_by_role('link', name='Editar')).to_have_count(0)
+        self.assertEqual(self.page.request.post(self.live_server_url + '/api/monografias/', data={}).status, 403)
         self.abrir('/equipe/?tipo=professor')
         expect(self.page.locator('[data-count]')).to_contain_text('23 registro(s)')
         self.page.get_by_role('button', name='Próxima', exact=True).click()
@@ -159,7 +140,8 @@ class NavegadorTests(StaticLiveServerTestCase):
         self.page.set_viewport_size({'width': 1366, 'height': 900})
 
         # Exclusão em ordem inversa das dependências, pela interface e pela API.
-        for config in (avaliacao, participacao, banca, externo, monografia, aluno, curso, professor):
+        banco(trabalho.delete)  # Remove apenas a fixture criada diretamente por este teste.
+        for config in (externo, aluno, curso, professor):
             self.abrir(config['excluir'].replace('/0/', f"/{config['id']}/"))
             with self.page.expect_response(lambda response: response.request.method == 'DELETE') as pending:
                 self.page.get_by_role('button', name='Confirmar exclusão').click()
