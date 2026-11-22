@@ -4,11 +4,9 @@ Aplicação acadêmica para organizar monografias, alunos, professores, cursos,
 bancas, participantes e avaliações. Usa Django, Django REST Framework,
 PostgreSQL, django-allauth e páginas Django com Bootstrap e JavaScript nativo.
 
-Documentação revisada em **20/11/2026**, após `5f7857b` (PR #3), a entrega
-dos painéis por perfil, a limpeza do legado, as correções de login/cadastro e a
-revisão de permissões conforme o escopo anexado. O plano original continua em
-[Plano_Refatoracao_CRUD_API_Monografias.pdf](Plano_Refatoracao_CRUD_API_Monografias.pdf);
-o estado atual de B01–B17 está em [PENDENCIAS.md](PENDENCIAS.md).
+Documentação revisada em **22/11/2026**, com o fechamento técnico da Parte 1.
+Consulte as [pendências da Parte 1](docs/PENDENCIAS_PARTE_1_SISTEMA_MONOGRAFIAS.md)
+e o [backlog geral](docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md).
 
 ## Executar localmente no Ubuntu
 
@@ -186,10 +184,11 @@ B09–B11; documentos e publicação usam a tela B12 descrita abaixo.
 
 ## Funcionalidades entregues
 
-Os oito CRUDs administrativos cobrem alunos, professores, cursos, monografias,
-bancas, participações, membros externos e avaliações. Possuem validação,
-busca, paginação, ordenação, exclusão protegida e telas integradas à API.
-Comece por `/equipe/` e depois use `/monografias/` e suas abas.
+Os cadastros administrativos de alunos, professores, cursos e membros externos
+permitem escrita. Monografias, bancas, participações e avaliações têm consulta
+administrativa com busca/paginação; as escritas acadêmicas são realizadas pelas
+ações autorizadas do painel do aluno, orientador, coordenador ou avaliador.
+Django Admin e CRUD legado não podem substituir a autoria dessas ações.
 
 Os commits de autenticação acrescentaram:
 
@@ -293,20 +292,41 @@ Suíte padrão: **216 testes, 201 aprovados, 15 opcionais ignorados, zero falhas
 Contratos, falhas/DLQ, limitações e reprodução estão no
 [guia B13](docs/DESENVOLVIMENTO.md#b13--repositório-api-pública-e-indexação-por-fila-22112026).
 
+### Parte 1: extração, avisos e controle de rede
+
+O microserviço processa cada submissão por fila (`processar_extracoes`). O principal
+registra avisos somente quando a banca fica `AGENDADA`; o consumidor entrega e-mails
+ao aluno e a todos os membros. Ambos usam outbox, registros de processamento e retentativas.
+
+```bash
+docker compose -f compose.notificacoes.yml up -d
+env/bin/python manage.py migrate --noinput
+env/bin/python manage.py processar_notificacoes
+```
+
+O painel de e-mails de teste fica em <http://127.0.0.1:8025>. Mantenha também
+`processar_repositorio` ativo e execute o extrator no Compose do microserviço.
+Copie as opções SMTP/rede do `.env.example`. Para acessar pela rede local, use
+`env/bin/python manage.py runserver 0.0.0.0:8000` e o endereço autorizado no `.env`.
+A área pública continua anônima. O [guia de desenvolvimento](docs/DESENVOLVIMENTO.md)
+registra arquitetura, limitações de SMTP, demonstração real e comandos de recuperação.
+
 ## Documentação e organização
 
 A documentação disponível nesta sessão está organizada assim:
 
 - [CRUD.md](CRUD.md): contratos, exemplos, telas, convites e auditoria.
 - [DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md): configuração, arquitetura, extensão e entregas B12/B13.
+- [Pendências da Parte 1](docs/PENDENCIAS_PARTE_1_SISTEMA_MONOGRAFIAS.md): fechamento técnico e evidências.
 - [Pendências de 22/11/2026](docs/PENDENCIAS_SISTEMA_MONOGRAFIAS_22-11-2026.md): backlog B01–B17 e pendências do microserviço.
 - [ESCOPO_E_ACESSOS.md](docs/ESCOPO_E_ACESSOS.md): comparação com o enunciado anexado e matriz de acesso.
 - [COMMITS.md](docs/COMMITS.md): histórico e validações anteriores.
 
 Os documentos canônicos listados acima são versionados em `docs/` por exceções
 explícitas no `.gitignore`; demais anexos/cópias continuam locais. E-mail opcional foi mantido.
-O enunciado anexado exige IP/VPN institucional; esse controle continua ausente
-e está registrado como pendência, apesar da retirada anterior pela equipe.
+O controle de rede administrativa usa `ADMIN_ALLOWED_NETWORKS` e proxies
+explicitamente confiáveis. O ambiente de demonstração permite loopback e
+`192.168.3.188/24`, conforme a decisão do usuário.
 O guia B12 registra separadamente a integração real executada nesta sessão e os
 limites desses testes.
 
@@ -339,7 +359,7 @@ para fixtures ou limpeza de testes.
 
 | Arquivo | Cobertura |
 | --- | --- |
-| `monografias/tests.py` | Oito CRUDs, regras, sessão/Basic, CSRF e integridade |
+| `monografias/tests.py` | CRUD cadastral, consulta acadêmica, bloqueio de rotas alternativas, validações, sessão/Basic, CSRF e integridade |
 | `monografias/test_migrations.py` | Migração vazia e bloqueio de conversão do legado sem mapeamento |
 | `home/test_interface.py` | Login compartilhado, formulários administrativos, API e respostas HTML |
 | `usuarios/tests.py` | Identidade, visibilidade do aluno e restrição administrativa |

@@ -49,7 +49,7 @@ Fontes utilizadas:
 | B13, Chrome anônimo | **2/2 aprovados**, seis filtros, paginação, detalhe, download, erro/retomada e desktop/celular | Aprovado localmente |
 | B13, RabbitMQ real | **3/3 aprovados**, extração/busca, mensagens repetidas, DLQ e retomada de envio após falha | Filas de teste descartadas; broker/worker locais ativos |
 
-> **Limites da evidência:** testes B12 de regras e navegador simulam o transporte do PDF original; a integração B12 usa HTTP/JWT real. No B13, filas/extração/busca foram testadas com RabbitMQ real. Bancas e PDFs são fixtures; não são termos acadêmicos assinados reais. Notificações, extração na submissão B09, Redis de busca/sessões e carga continuam pendentes.
+> **Limites da evidência:** testes B12 de regras e navegador simulam o transporte do PDF original; a integração B12 usa HTTP/JWT real. No B13, filas/extração/busca foram testadas com RabbitMQ real. Bancas e PDFs são fixtures; não são termos acadêmicos assinados reais. A revisão da Parte 1 comprovou extração B09, notificações e controle de rede; Redis de busca/sessões e carga continuam pendentes.
 
 ---
 
@@ -60,20 +60,20 @@ Fontes utilizadas:
 | **B01 — Base/backup** | Concluído no escopo anterior | Preservar documentação, migrações e backups; validar restauração na entrega, se aplicável |
 | **B02 — Configuração e legado** | Concluído no escopo anterior | Verificar apenas configuração de implantação final |
 | **B03 — Regras de domínio** | **Parcial** | Média **6,0** e média aritmética já adotadas; correções/publicação definidas no B12; composição/quórum acadêmico ainda dependem das exigências do curso |
-| **B04 — Autenticação/autorizações** | **Parcial** | Allauth, perfis, JWT e avaliação externa existem; faltam controle de rede IP/VPN, revisão de autorizações e rotas administrativas alternativas |
+| **B04 — Autenticação/autorizações** | **Parte 1 concluída** | Rede administrativa configurável, autorizações por objeto e caminhos alternativos revisados |
 | **B05 — Alunos/professores/cursos** | Concluído no núcleo | CRUD e vínculos de conta funcionam; não recriar |
 | **B06 — Monografia/rascunho** | Concluído no núcleo; integração histórica parcial | Dois IDs vinculados no B09; trabalhos remotos antigos não vinculados automaticamente |
 | **B07 — API REST** | **Núcleo implementado; entrega B13 pendente** | APIs administrativas/acadêmicas, ações privadas B12 e leituras públicas B13 disponíveis; revisões gerais de segurança continuam abaixo |
 | **B08 — Modelagem de bancas e auxiliares** | Concluído no núcleo | Models, CRUD e participantes existentes |
 | **B09 — Submissão e orientação** | **Concluído no fluxo principal; validação complementar** | PDF, hash, submissão, leitura privada e aprovação integrados; testar manualmente devolução para ajustes/reenvio e falhas |
-| **B10 — Agendamento/convites** | **Concluído no núcleo; integração assíncrona pendente** | Aprovação prévia, proposta, confirmações e conflitos; faltam notificações automáticas via fila |
+| **B10 — Agendamento/convites** | **Parte 1 concluída** | Confirmações, conflitos e avisos via RabbitMQ/SMTP comprovados |
 | **B11 — Avaliação/resultado** | **Concluído no núcleo** | Professores e externos, nota/parecer/recomendação, média e fechamento testados; integração de eventos/revisão do CRUD legado ainda a avaliar |
 | **B12 — Correções/documentos/publicação** | **Implementado e validado localmente; entrega Git pendente** | Documentos privados, conferência humana, versões, publicação automática e arquivo final fixado; testes de regras, navegador e integração real aprovados |
 | **B13 — Repositório público** | **Implementado e validado localmente; entrega Git pendente** | Seis filtros, API anônima, catálogo/detalhe, PDF final e busca textual assíncrona; testes de API, Chrome e RabbitMQ real aprovados |
 | **B14 — Auditoria** | **Parcial** | `HistoricoAcao` e `django-simple-history` existem; falta confirmar rastreabilidade fim a fim e operações do admin |
 | **B15 — Frontend e dashboard** | **Parcial** | Painéis, ações acadêmicas, B12 e catálogo público B13 presentes; faltam os **5 gráficos** |
 | **B16 — PostgreSQL** | Concluído no ambiente local | Dois bancos/migrações executados; documentar inicialização/reprodução |
-| **B17 — Integração distribuída** | **Parcial** | JWT/HTTP B09 e indexação B13 via RabbitMQ/outbox validados; faltam extração na submissão, outros eventos, cache de busca, notificações e carga |
+| **B17 — Integração distribuída** | **Parcial** | JWT/HTTP, extração B09, avisos B10 e índice B13 validados; faltam eventos adicionais, Redis de busca/sessões e carga |
 
 **Regra para o grupo:** B09, B10 e B11 **não devem voltar à categoria “a implementar”**. Suas pendências remanescentes são integrações, validações ou correções específicas, detalhadas abaixo.
 
@@ -135,7 +135,7 @@ Fontes utilizadas:
 
 **Evidência e operação:** [guia B13](DESENVOLVIMENTO.md#b13--repositório-api-pública-e-indexação-por-fila-22112026). Migrações `repositorio.0001/0002` aplicadas; publicações existentes são enfileiradas. Broker local em `5673`, painel em `15673`; worker `processar_repositorio` e diagnóstico `status_repositorio`. Nenhuma senha foi versionada.
 
-**Entrega restante:** commit/push e inclusão deliberada de `docs/`, ainda ignorada pelo Git. Redis/cache/carga e notificações não foram marcados como concluídos por esta entrega.
+**Entrega Git B12/B13:** commit `2fb7743`, merge `efb12ce`; documentação canônica já versionada. A Parte 1 acrescentou notificações e extração B09. Redis/cache/carga permanecem na Parte 2. Histórico da entrega atual em `COMMITS.md`.
 
 **Critério de conclusão:** um visitante anônimo encontra o TCC publicado pelos seis filtros, vê os dados públicos e acessa apenas o arquivo final permitido; trabalhos não publicados não vazam por nenhuma rota pública.
 
@@ -143,19 +143,19 @@ Fontes utilizadas:
 
 **Exigência expressa:** extração de texto do PDF deve ocorrer **de forma assíncrona por fila**, não dentro do upload; o agendamento precisa produzir **notificações automáticas via eventos**. RabbitMQ ou Kafka é obrigatório como tecnologia do trabalho.
 
-**Já existe:** RabbitMQ, um publicador/consumidor e eventos de submissão no microserviço; Redis para lock e limitação de submissões. No B13, **extração/indexação do PDF final via evento de publicação, outbox transacional, ACK após commit, idempotência, retentativas e DLQ foram implementados e testados com broker real**. Isso não comprova extração na submissão B09 nem entrega de notificações.
+**Já existe:** RabbitMQ, um publicador/consumidor e eventos de submissão no microserviço; Redis para lock e limitação de submissões. No B13, **extração/indexação do PDF final via evento de publicação, outbox transacional, ACK após commit, idempotência, retentativas e DLQ foram implementados e testados com broker real**. A revisão da Parte 1 acrescentou extração por submissão no microserviço e avisos de banca no principal, comprovados com RabbitMQ/SMTP reais.
 
 **Falta fazer:**
 
-- [ ] Criar ou conectar um **consumidor real** para `monografia.submetida` (ou o evento definido pelo grupo) que faça leitura e **extração de texto** do PDF com biblioteca própria para PDF.
-- [ ] Salvar texto/índice de forma consultável, com associação correta à monografia, à versão do PDF e ao status publicado.
-- [ ] Garantir que upload termine sem esperar pela extração; testar processamento assíncrono e eventual falha do arquivo.
-- [ ] Produzir evento `banca.agendada` **a partir do fluxo B10 de verdade**, e não somente por comando de simulação.
-- [ ] Implementar consumidor de notificação que informe **todos os membros da banca e o aluno** sobre o agendamento por mecanismo efetivo (por exemplo, e-mail), usando RabbitMQ.
+- [x] Criar ou conectar um **consumidor real** para `monografia.submetida` (ou o evento definido pelo grupo) que faça leitura e **extração de texto** do PDF com biblioteca própria para PDF.
+- [x] Salvar texto/índice de forma consultável, com associação correta à monografia, à versão do PDF e ao status publicado.
+- [x] Garantir que upload termine sem esperar pela extração; testar processamento assíncrono e eventual falha do arquivo.
+- [x] Produzir evento `banca.agendada` **a partir do fluxo B10 de verdade**, e não somente por comando de simulação.
+- [x] Implementar consumidor de notificação que informe **todos os membros da banca e o aluno** sobre o agendamento por mecanismo efetivo (por exemplo, e-mail), usando RabbitMQ.
 - [x] Conectar evento de publicação para atualizar o índice/repositório. **B13 implementado; aviso por e-mail ao aluno continua pendente.**
-- [ ] Definir contrato mínimo de evento: ID único, monografia de origem, identificador do evento, ação, data e referência da versão; não misturar PKs dos dois bancos. **Contrato de publicação B13 pronto; padronização dos demais eventos pendente.**
-- [ ] Prever mensagens duplicadas, falha do worker/broker e retomada; **não perder mudança de estado** se o banco confirmar e a publicação do evento falhar. Avaliar *transactional outbox* ou mecanismo equivalente.
-- [ ] Registrar sucesso/falha/retentativa e inspecionar a DLQ existente quando houver mensagens inválidas. **B13 registra esses estados e sua DLQ foi testada; estender a comprovação aos demais fluxos.**
+- [ ] Definir contrato mínimo de evento: ID único, monografia de origem, identificador do evento, ação, data e referência da versão; não misturar PKs dos dois bancos. **Contratos B09/submissão, B10/avisos e B13 prontos; eventos legados de aprovação/resultado ainda dependem de padronização na Parte 2.**
+- [ ] Prever mensagens duplicadas, falha do worker/broker e retomada; **não perder mudança de estado** se o banco confirmar e a publicação do evento falhar. **Outbox implementada em submissão, avisos e publicação; os demais eventos legados ainda precisam da mesma garantia.**
+- [ ] Registrar sucesso/falha/retentativa e inspecionar a DLQ existente quando houver mensagens inválidas. **B09/submissão, B10/avisos e B13 registram esses estados; manter revisão dos eventos legados da Parte 2.**
 
 **Critério de conclusão:** envio de PDF gera processamento em worker, texto é indexado sem bloquear o upload; uma banca agendada causa **notificação entregue**; desligar e religar o consumidor não gera duplicações indevidas.
 
@@ -198,14 +198,14 @@ Além disso:
 
 ### P0-F — Controle IP/VPN na área administrativa (B04)
 
-**O enunciado exige expressamente** que a área administrativa valide acesso pela **rede institucional (IP/VPN)**, mantendo o repositório público sem login. A equipe havia optado por não implementar essa restrição; portanto, **permanece uma divergência conhecida com o enunciado**.
+**O enunciado exige expressamente** que a área administrativa valide acesso pela **rede institucional (IP/VPN)**, mantendo o repositório público sem login. **Implementado na Parte 1:** rede local aprovada `192.168.3.188/24` (sub-rede `192.168.3.0/24`) e loopback, configuráveis no `.env`.
 
-- [ ] Definir com o grupo quais rotas integram a **área administrativa** e qual faixa IP/VPN será permitida no ambiente demonstrado.
-- [ ] Aplicar restrição no proxy/middleware, com cuidado para não confiar cegamente em cabeçalhos `X-Forwarded-For` fornecidos pelo cliente.
-- [ ] Negar acesso administrativo fora da rede e permitir dentro, sem restringir o catálogo público.
-- [ ] Testar sessões/admin/rotas sensíveis em cenários dentro/fora da rede.
+- [x] Definir com o grupo quais rotas integram a **área administrativa** e qual faixa IP/VPN será permitida no ambiente demonstrado.
+- [x] Aplicar restrição no proxy/middleware, com cuidado para não confiar cegamente em cabeçalhos `X-Forwarded-For` fornecidos pelo cliente.
+- [x] Negar acesso administrativo fora da rede e permitir dentro, sem restringir o catálogo público.
+- [x] Testar sessões/admin/rotas sensíveis em cenários dentro/fora da rede.
 
-**Critério de conclusão:** proteção de rede funcional e teste demonstrável. **Decisão de projeto:** se o grupo mantiver a exclusão, documentar explicitamente o requisito não atendido; não marcar como concluído.
+**Critério de conclusão:** proteção de rede funcional e teste demonstrável. **Evidências:** testes de redes interna/externa, proxies e cabeçalho forjado; acesso público preservado.
 
 ---
 
@@ -219,8 +219,8 @@ Estes itens **não justificam refazer B09, B10 ou B11**. São verificações pon
 - [x] Orientador abriu o documento e aprovou; o fluxo principal funcionou na prática.
 - [x] Vínculo por `microservico_id` ↔ `origem_id` e sincronização manual de estado implementados.
 - [x] Testes do principal e do microserviço aprovados.
-- [ ] Fazer **teste manual da devolução com motivo, edição e reenvio** (automatizado já passou).
-- [ ] Verificar em teste prático que a aprovação muda para `APROVADA_ORIENTADOR` e libera a ação do B10, sem alteração direta no banco.
+- [x] Fazer **teste no Chrome da devolução com motivo, edição e reenvio** (automatizado já passou).
+- [x] Verificar em teste prático que a aprovação muda para `APROVADA_ORIENTADOR` e libera a ação do B10, sem alteração direta no banco.
 - [ ] Confirmar comportamento em queda de rede depois do upload, resposta duplicada, token expirado e sincronização posterior; incluir casos automatizados que faltarem.
 - [ ] Decidir como tratar **monografias antigas** criadas somente no microserviço; o patch não vincula automaticamente esses registros.
 
@@ -229,10 +229,10 @@ Estes itens **não justificam refazer B09, B10 ou B11**. São verificações pon
 ### B10 — Agendamento: preservar núcleo entregue
 
 - [x] Aprovação prévia obrigatória, propostas `PENDENTE`, confirmação interna/externa, conflito de horários e transição `AGENDADA` testados.
-- [ ] **Notificação automática via fila** após `AGENDADA` (prioridade P0-C acima).
+- [x] **Notificação automática via fila** após `AGENDADA` (prioridade P0-C acima).
 - [ ] Executar **teste real de duas confirmações concorrentes** e conflitos de professores/externos; o código já usa transações e bloqueios PostgreSQL.
 - [ ] Definir composição/quórum acadêmico **se a disciplina/grupo exigir regra adicional**. O enunciado exige todos confirmados, mas não fixa número mínimo específico.
-- [ ] Testar manualmente percurso orientador/coordenador → membros internos/externos → banca agendada.
+- [x] Testar no Chrome percurso orientador/coordenador → membros internos/externos → banca agendada.
 
 **Não criar sem necessidade:** calendário visual ou reagendamento avançado. Para mudanças antes da banca, cancelar proposta e recriar pode ser suficiente, se aceito pelo grupo.
 
@@ -243,17 +243,17 @@ Estes itens **não justificam refazer B09, B10 ou B11**. São verificações pon
 - [x] Nota, parecer, recomendação, média aritmética e fechamento após todas as avaliações obrigatórias.
 - [x] Regra de média mínima **6,00** adotada pelo grupo, com aprovação com ressalvas se houver recomendação correspondente.
 - [x] Testes específicos e suíte geral aprovados.
-- [ ] Verificar e, se necessário, restringir o **CRUD administrativo legado de avaliações**, que usa regras diferentes das ações acadêmicas: só o respectivo avaliador deve alterar sua avaliação antes do fechamento, como pede o enunciado.
-- [ ] Demonstrar no navegador registro da avaliação externa e bloqueio após finalização (testes automatizados já passaram).
+- [x] Verificar e, se necessário, restringir o **CRUD administrativo legado de avaliações**, que usa regras diferentes das ações acadêmicas: só o respectivo avaliador deve alterar sua avaliação antes do fechamento, como pede o enunciado.
+- [x] Demonstrar no navegador registro da avaliação externa e bloqueio após finalização (testes automatizados já passaram).
 - [ ] Validar que histórico/consulta final e eventos associados à avaliação/resultado estejam coerentes com a arquitetura escolhida.
 
 **Importante:** o código temporário de avaliação externa é gerado pelo responsável e o link/código ainda é enviado manualmente. **O enunciado exige token temporário, não necessariamente envio automático desse token**. Já a notificação automática da **banca agendada** é exigência explícita.
 
 ### Segurança, auditoria e rotas alternativas (B04/B07/B14/B17)
 
-- [ ] Rever acesso por objeto e **curso** no microserviço, principalmente perfis de coordenador e tentativas de alterar `curso_id`, `aluno_id` e `orientador_id` sem autoridade.
-- [ ] Revisar **admin Django e CRUD legado** para que não contornem regras de aprovação, avaliação, publicação, alteração de estado ou exclusão; se necessário, torná-los somente leitura ou encaminhar aos serviços de domínio.
-- [ ] Confirmar que PDF e documentos privados não podem ser baixados anonimamente nem por usuário de outro trabalho, inclusive por `/media/` ou URL direta.
+- [x] Rever acesso por objeto e **curso** no microserviço, principalmente perfis de coordenador e tentativas de alterar `curso_id`, `aluno_id` e `orientador_id` sem autoridade.
+- [x] Revisar **admin Django e CRUD legado** para que não contornem regras de aprovação, avaliação, publicação, alteração de estado ou exclusão; se necessário, torná-los somente leitura ou encaminhar aos serviços de domínio.
+- [x] Confirmar que PDF e documentos privados não podem ser baixados anonimamente nem por usuário de outro trabalho, inclusive por `/media/` ou URL direta.
 - [ ] Registrar e consultar quem fez cada mudança, o que foi alterado e quando; correlacionar `HistoricoAcao`, `simple-history` e eventos com IDs que não exponham segredos.
 - [ ] Verificar política de senhas, recuperação de acesso, revogação de contas/tokens, HTTPS para comunicação fora de `localhost`, CSRF e autorização dos endpoints públicos/privados.
 - [ ] Documentar tratamento de senhas/chaves do `.env`, configuração de proxy e retenção/backup de arquivos e bancos.
@@ -281,7 +281,7 @@ Percurso sugerido, sem alterar estados manualmente no banco:
 13. [ ] Acesso administrativo fora da rede institucional é negado; consulta pública continua acessível.
 14. [ ] Histórico identifica autor, ação e data/hora das principais operações.
 
-**Estado atual da demonstração:** passos **2 e a parte de aprovação do 4 foram testados realmente**; B10/B11 têm cobertura automatizada, B12 tem testes de navegador/HTTP real e a consulta pública do passo **10** foi demonstrada no Chrome. A indexação final foi comprovada com RabbitMQ real. Ainda falta o cenário completo com notificações, Redis/cache/carga, rede institucional e os gráficos.
+**Estado atual da demonstração:** passos **2 e a parte de aprovação do 4 foram testados realmente**; B10/B11 têm cobertura automatizada, B12 tem testes de navegador/HTTP real e a consulta pública do passo **10** foi demonstrada no Chrome. A indexação final foi comprovada com RabbitMQ real. O cenário completo da Parte 1 já passou no Chrome com HTTP/JWT, RabbitMQ e SMTP reais e a rede local aprovada foi testada. Redis/cache/carga e gráficos permanecem na Parte 2.
 
 ---
 
@@ -289,7 +289,7 @@ Percurso sugerido, sem alterar estados manualmente no banco:
 
 | Ordem | Entrega | Dependências | Resultado verificável |
 |---|---|---|---|
-| **1** | **B12: implementação e testes locais feitos; falta entrega Git** | B11 já concluído | Publicação bloqueada até critérios cumpridos; arquivo final definido e validado |
+| **1** | **B12: implementado, testado e integrado** | B11 já concluído | Publicação bloqueada até critérios cumpridos; arquivo final definido e validado |
 | **2** | **B13: implementação e testes locais feitos; falta entrega Git** | Publicação B12 | Visitante anônimo pesquisa por 6 filtros, conteúdo indexado e baixa somente o PDF final |
 | **3** | **Fila: extração, indexação e notificações** | B09/B10/B13 | Upload gera processamento fora da requisição; agenda envia avisos |
 | **4** | **Redis: sessões e cache de pesquisa** | B13 | Hits/expiração/invalidação demonstrados |
@@ -336,4 +336,4 @@ Cada linha obrigatória só deve passar para **CONCLUÍDO** quando houver:
 5. Para requisitos de interface, **fluxo demonstrado no navegador**.
 6. Commit e push confirmados; limitações restantes listadas explicitamente.
 
-**Versão desta lista:** consolidada após B09/B10/B11 e atualizada com implementação e validação local B12/B13 em 22/11/2026. Commit/push dessas entregas ainda não realizados. Atualizar este documento, em vez de criar novas listas conflitantes, sempre que os colegas concluírem uma frente.
+**Versão desta lista:** revisada com o fechamento técnico da Parte 1 em 22/11/2026. B12/B13 integrados à main; versões e entrega Git em `COMMITS.md`. Pendências exclusivas da Parte 2 permanecem abertas. Atualizar este documento, em vez de criar novas listas conflitantes, sempre que os colegas concluírem uma frente.

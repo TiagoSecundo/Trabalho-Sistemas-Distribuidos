@@ -811,3 +811,207 @@ afirmação de suporte a milhares de acessos nem implantação em produção.
 Referências técnicas usadas: [busca textual do Django/PostgreSQL](https://docs.djangoproject.com/en/6.0/ref/contrib/postgres/search/)
 para vetores e consultas em português; [Pika BlockingConnection](https://pika.readthedocs.io/en/stable/modules/adapters/blocking.html)
 para confirmação de publicação, ACK e uso da conexão na thread responsável.
+
+
+## Parte 1 — filas, rede administrativa e revisão final (22/11/2026)
+
+### Reconciliação e decisões aplicadas
+
+Antes desta etapa, a interface e B12/B13 foram registrados no commit `2fb7743` e
+integrados à `main` pelo merge `efb12ce`. O novo arquivo
+`PENDENCIAS_PARTE_1_SISTEMA_MONOGRAFIAS.md` foi conferido primeiro: P1-01/P1-02 já
+estavam entregues. A indexação B13 não substituía a extração após submissão B09.
+
+Decisões confirmadas pelo usuário nesta etapa:
+
+- Rede configurável no `.env`, com `192.168.3.188/24` para o trabalho. Esse CIDR
+  autoriza a sub-rede **192.168.3.0/24**; loopback IPv4/IPv6 também foi autorizado.
+  `DJANGO_ALLOWED_HOSTS` inclui o endereço da máquina.
+- SMTP local com painel para demonstrar recebimento. Mailpit em
+  <http://127.0.0.1:8025>, SMTP `127.0.0.1:1025`, sem retransmissão externa.
+  A imagem foi fixada em `axllent/mailpit:v1.34.0`, conforme as
+  [versões oficiais](https://github.com/axllent/mailpit/releases/tag/v1.34.0).
+
+### P1-03 — extração de cada submissão no microserviço
+
+O microserviço agora mantém `ExtracaoPDF`, com UUID, monografia remota, arquivo
+preservado, SHA-256, texto, indicador de ausência de texto, datas, tentativas e
+classe do último erro. Cada submissão aceita cria sua tarefa na mesma transação.
+O HTTP não abre o RabbitMQ nem executa `extract_text`. Um reenvio pode ocorrer
+sem aguardar a extração anterior; ambos os arquivos continuam identificáveis.
+
+O comando `processar_extracoes` publica e consome `monografia.submetida` em uma
+fila própria. Usa mensagens persistentes, publisher confirms, ACK após commit,
+idempotência por UUID, repetição após incerteza de envio, espera crescente e DLQ.
+Três erros de processamento exigem `--repetir-falhas`. PDF sem texto encerra com
+indicador próprio; não há OCR. O texto privado é limitado a um milhão de caracteres
+por versão. O download e a aprovação também verificam o hash.
+
+As migrações `0005`/`0006` criam a estrutura e preparam versões atuais já
+submetidas. Não reconstroem arquivos históricos ausentes. O endpoint privado
+`GET /api/monografias/<id>/extracoes/` retorna `versoes`, respeitando aluno e
+orientador. O catálogo público continua usando somente o PDF final B12 e o índice
+B13 do principal. Instruções completas estão em `DESENVOLVIMENTO.md` do microserviço.
+
+### P1-04 — avisos automáticos de banca
+
+A transição B10 para `AGENDADA` grava `AvisoBanca` e suas `EntregaAviso` dentro da
+mesma transação das confirmações. Propostas pendentes não geram avisos. O conteúdo
+registra trabalho, aluno, início/término com fuso, modalidade e local/link; o
+snapshot de destinatários inclui aluno e todos os membros, inclusive suplentes.
+E-mails iguais são deduplicados e cada mensagem tem um único destinatário.
+
+`processar_notificacoes` publica `banca.agendada` no RabbitMQ e o consumidor envia
+via SMTP. O contrato contém versão, UUID e ID da banca; dados e destinatários são
+obtidos da outbox, impedindo que mensagens forjadas escolham endereços arbitrários.
+A confirmação de entrega é persistida por destinatário. Uma falha intermediária
+retoma os restantes; a repetição de uma tarefa concluída não envia novamente.
+Há publisher confirms, ACK após persistência, espera crescente, três tentativas e
+DLQ, com retomada explícita por `--repetir-falhas`.
+
+**Limite do SMTP:** se o servidor aceitar a mensagem e a conexão/processo cair
+antes do registro no banco, uma nova tentativa pode duplicá-la. O `Message-ID` é
+determinístico, mas SMTP não oferece transação conjunta com PostgreSQL. A garantia
+é reprocessamento sem duplicar entregas já confirmadas, não entrega exatamente uma
+vez em qualquer falha. Para o trabalho, a demonstração usa o Mailpit sem entrega
+externa. Códigos temporários de convite/avaliação continuam sendo compartilhados
+pelo responsável; o aviso automático de agendamento já é independente desse fluxo.
+
+### P1-05/P1-06 — rede e autorização dos caminhos alternativos
+
+`RedeAdministrativaMiddleware` protege `/admin/`, HTML de equipe/monografias,
+CRUD REST administrativo e ações/painéis privados acessados como administrador.
+Contas comuns continuam usando os serviços acadêmicos com autorização por objeto.
+O catálogo público permanece anônimo. `ADMIN_ALLOWED_NETWORKS` vazio bloqueia
+acesso; CIDR inválido impede inicialização. O `.env.example` documenta a configuração.
+
+Sem `ADMIN_TRUSTED_PROXIES`, `X-Forwarded-For` é ignorado. Com proxies explicitamente
+confiáveis, a cadeia é validada da direita para a esquerda até o primeiro endereço
+não confiável. O proxy deve sobrescrever/anexar o IP real. Cadeias inválidas não
+concedem acesso. Não cadastre proxies ou sub-redes amplas sem controle do encaminhamento.
+
+Monografias, bancas, participações e avaliações passaram a **consulta** no Django
+Admin e no CRUD administrativo genérico. A interface remove seus botões de escrita.
+Rascunhos continuam no painel do aluno; composição/convites no B10; notas e pareceres
+nas ações do próprio avaliador, incluindo código externo. Propostas podem ser
+canceladas e recriadas antes de agendar. Cadastros de alunos, professores, cursos e
+membros externos continuam editáveis pela administração. As validações dos modelos,
+serializadores e formulários foram preservadas e testadas na camada correspondente.
+
+No microserviço, coordenador consulta somente `curso_ids` assinados; criação e
+alteração de curso/orientador precisam corresponder aos claims; edição/exclusão de
+rascunho exige o aluno proprietário. Atualizações reavaliam o estado sob lock.
+A área administrativa do microserviço também tem controle de rede e não confia
+em cabeçalhos do cliente.
+
+### P1-07/P1-08 — integridade, senhas e auditoria
+
+O original é conferido por SHA-256 na leitura e antes da aprovação no microserviço;
+B12/B13 mantêm a verificação e o hash próprio da versão final. Reenvios não
+sobrescrevem as versões identificadas. Há testes de adulteração e acesso indevido.
+
+Os quatro validadores Django/allauth foram mantidos: similaridade com dados do
+usuário, tamanho mínimo, senha comum e senha numérica. A recuperação foi testada
+por e-mail e navegador, incluindo troca efetiva e invalidação do link anterior.
+Todos os perfis são exercitados, incluindo membro externo sem conta permanente.
+
+Cadastros pelo Django Admin acrescentam `HistoricoAcao`; alterações de contas e
+permissões também possuem `LogEntry` nativo. A auditoria de exclusão genérica agora
+guarda o ID **antes** de o ORM limpar `instance.pk`, na mesma transação da exclusão.
+Upload, orientação, proposta/confirmações, avaliações, documentos e publicação têm
+ator, ação e data; operações externas identificam a participação/membro. Nenhum
+JWT, código de convite, código de avaliação ou senha integra os detalhes do histórico.
+
+### Operação local
+
+```bash
+env/bin/python manage.py migrate --noinput
+docker compose -f compose.notificacoes.yml up -d
+env/bin/python manage.py processar_notificacoes
+env/bin/python manage.py status_notificacoes
+```
+
+Mantenha também `processar_repositorio` ativo para o índice público e, no microserviço,
+`docker compose up -d extractor` depois de construir a imagem com pypdf e migrar.
+São filas separadas: notificações e B13 usam `RABBITMQ_URL` do principal; extração
+B09 usa o broker do microserviço. Não há ligação com o token JWT configurado antes.
+
+Para retomar erros esgotados, execute o worker correspondente com
+`--uma-vez --repetir-falhas`. Use somente uma instância manual ao inspecionar,
+para facilitar a leitura dos contadores. Workers concorrentes também são protegidos
+por locks/idempotência. Não limpe volumes de banco, RabbitMQ, PDFs ou Mailpit ao
+reiniciar; `down -v` remove dados e é reservado ao ambiente descartável de testes.
+
+### P1-09 — demonstração integrada realizada
+
+`usuarios.test_parte1_integrada` percorreu no Chrome, com serviços reais e dados
+isolados: cadastro de rascunho, envio, pedido de ajustes com motivo, edição/reenvio,
+duas extrações via RabbitMQ, leitura e aprovação HTTP/JWT, proposta de banca,
+confirmação interna e externa, entrega de três e-mails via fila, defesa, avaliações
+internas/externas, bloqueio do fechamento incompleto, média **8,50**, bloqueio de
+alteração após fechamento, correção/termo, publicação automática e PDF final anônimo.
+
+A banca de demonstração teve duração de um minuto; o teste aguardou seu término
+real. Nenhuma atualização direta de estado ou data no banco foi usada para avançar
+o fluxo. Os documentos são fixtures, incluindo um termo fictício; não são
+assinaturas acadêmicas reais. A assinatura é conferida explicitamente no fluxo B12.
+
+Uma segunda demonstração confirmou recuperação de senha via SMTP real e Chrome.
+Os dois cenários passaram em **161,190 segundos**. Capturas locais:
+`/tmp/allteam-parte1-browser/01-submissao-revisada.png`, `02-banca-agendada.png`,
+`03-avaliacao-externa.png`, `04-publicacao-automatica.png`, `05-repositorio-publico.png`
+e `06-senha-recuperada.png`. Log: `/tmp/parte1-integracao.log`. São evidências locais,
+não arquivos necessários ao funcionamento e não contêm credenciais de serviços.
+
+Reprodução: use o `compose.integracao.yml` do microserviço com chaves temporárias,
+Mailpit local e RabbitMQ configurado no principal. No mesmo shell que contém
+`P1_JWT_SIGNING_KEY`:
+
+```bash
+RUN_P1_INTEGRATION=1 P1_MICROSERVICO_URL=http://127.0.0.1:8011/api/ env/bin/python manage.py test usuarios.test_parte1_integrada --keepdb --noinput
+```
+
+Não use um banco remoto com dados acadêmicos reais. Os registros do principal são
+limpos pelo runner Django; os remotos ficam no ambiente descartável até removê-lo.
+As filas temporárias de avisos e índice são excluídas ao finalizar a prova.
+Redis de sessões/busca, gráficos e carga continuam na Parte 2.
+
+
+### Recuperação de comunicação e assinatura JWT
+
+Um terceiro cenário integrado usa um proxy HTTP local que encaminha a submissão
+real ao microserviço e encerra a conexão **depois** de ele confirmar o estado. O
+principal responde 503, mantém o vínculo remoto e, ao repetir o envio, recupera
+`SUBMETIDA`, SHA-256 e o mesmo ID. Foi comprovada uma única versão remota. O cenário
+passou em **9,284 segundos**, log `/tmp/parte1-recuperacao-http.log`.
+
+A execução conjunta revelou o backend global de assinatura do SimpleJWT retendo a
+chave inicial entre configurações. `usuarios/tokens.py` agora usa a chave, algoritmo
+e duração vigentes em cada emissão, tanto na integração quanto no endpoint de JWT.
+O teste verifica troca de chave, rejeição pela chave anterior e prazo efetivo.
+
+A regressão principal com Chrome, RabbitMQ e HTTP B12 habilitados passou em
+**226 testes descobertos, 224 aprovados, 2 cenários P1 executados separadamente,
+zero falhas** (167,169 s). O cenário adicional de perda de resposta foi acrescentado
+e aprovado depois dessa campanha: a descoberta atual soma **227 testes**, com os
+três cenários P1 reais comprovados separadamente. O microserviço tem **20 testes**.
+Os testes administrativos antigos foram adaptados à consulta; as validações de
+campos continuam cobertas por formulários/serializadores e pelos serviços do painel.
+
+A migração de notificações foi aplicada no banco local e o consumidor está ativo.
+Nenhum agendamento ou publicação foi criado no banco principal de desenvolvimento:
+a demonstração usou `test_curso_django_dev` e um microserviço/PostgreSQL descartáveis.
+Os e-mails fictícios permanecem visíveis no Mailpit para apresentação.
+
+
+### Fechamento Git da Parte 1
+
+O commit principal `affafe4`, já enviado para a branch remota pelo integrante,
+foi preservado. O fechamento documental registra a integração dessa branch à
+`main` local. No microserviço original, a `main` recebeu o merge `9ee83f6`,
+contendo `a171803` e `b9dd9bb`. Não houve push automático desses merges locais.
+O histórico e a situação de compartilhamento estão em `COMMITS.md`.
+
+As afirmações históricas acima sobre documentos ignorados, ausência de controle
+de rede e commits pendentes descrevem o momento das entregas anteriores;
+esta seção e o checklist da Parte 1 são a referência do estado atual.

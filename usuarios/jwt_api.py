@@ -11,6 +11,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from equipe.models import Aluno, Curso, Professor
 from monografias.models import HistoricoAcao
 from .roles import obter_papeis
+from .tokens import assinar_token
 
 
 class TokenMicroservicoView(APIView):
@@ -116,7 +117,7 @@ class TokenMicroservicoView(APIView):
         )
 
         resposta = Response({
-            'access': str(token),
+            'access': assinar_token(token),
             'token_type': 'Bearer',
             'role': papel,
             'expires_in': int(

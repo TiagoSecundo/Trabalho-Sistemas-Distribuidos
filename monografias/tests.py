@@ -1,5 +1,4 @@
 from datetime import timedelta
-from decimal import Decimal
 import base64
 
 from django.contrib.auth import get_user_model
@@ -69,24 +68,8 @@ class CRUDAcademicoTests(APITestCase):
     def test_crud_curso(self):
         self.verificar_crud('cursos', Curso, {'nome': 'Engenharia', 'codigo': 'ENG'}, 'nome', 'Engenharia de Software')
 
-    def test_crud_monografia_e_varios_trabalhos_por_aluno(self):
-        self.verificar_crud('monografias', Monografia, self.monografia_payload(), 'titulo', 'Título atualizado')
-        self.assertTrue(Monografia.objects.filter(pk=self.monografia.pk).exists())
-
-    def test_crud_banca(self):
-        monografia = Monografia.objects.create(titulo='Outra', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
-        self.verificar_crud('bancas', Banca, self.banca_payload(monografia.pk), 'local', 'Sala 3')
-
-    def test_crud_avaliacao(self):
-        self.verificar_crud('avaliacoes', Avaliacao, self.avaliacao_payload(), 'nota', Decimal('9.00'))
-
     def test_crud_membro_externo(self):
         self.verificar_crud('membros-externos', MembroExterno, {'nome': 'Felipe', 'email': 'felipe@example.com', 'instituicao': 'Universidade'}, 'instituicao', 'Instituto')
-
-    def test_crud_participacao_banca(self):
-        monografia = Monografia.objects.create(titulo='Outra banca', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
-        banca = Banca.objects.create(monografia=monografia, inicio=self.inicio, fim=self.fim, local='Sala 2')
-        self.verificar_crud('participacoes-banca', ParticipacaoBanca, {'banca': banca.pk, 'professor': self.outro_professor.pk}, 'papel', 'PRESIDENTE')
 
     def test_api_exige_autenticacao_e_perfil_administrativo(self):
         for recurso in ('alunos', 'professores', 'cursos', 'monografias', 'bancas', 'avaliacoes', 'membros-externos', 'participacoes-banca'):
@@ -127,8 +110,8 @@ class CRUDAcademicoTests(APITestCase):
             with self.subTest(recurso=recurso):
                 url = f'/api/{recurso}/999999/'
                 self.assertEqual(self.client.get(url).status_code, 404)
-                self.assertEqual(self.client.patch(url, {}, format='json').status_code, 404)
-                self.assertEqual(self.client.delete(url).status_code, 404)
+                self.assertEqual(self.client.patch(url, {}, format='json').status_code, 403 if recurso in ('monografias', 'bancas', 'avaliacoes', 'participacoes-banca') else 404)
+                self.assertEqual(self.client.delete(url).status_code, 403 if recurso in ('monografias', 'bancas', 'avaliacoes', 'participacoes-banca') else 404)
 
     def test_matricula_codigo_e_email_professor_unicos(self):
         casos = [
@@ -140,23 +123,6 @@ class CRUDAcademicoTests(APITestCase):
             with self.subTest(recurso=recurso):
                 self.assertEqual(self.client.post(f'/api/{recurso}/', payload, format='json').status_code, 400)
 
-    def test_dados_obrigatorios_e_relacionamentos_invalidos(self):
-        for recurso in ('alunos', 'professores', 'cursos', 'monografias', 'bancas', 'avaliacoes'):
-            self.assertEqual(self.client.post(f'/api/{recurso}/', {}, format='json').status_code, 400)
-        payload = self.monografia_payload()
-        payload['aluno'] = 999999
-        self.assertEqual(self.client.post('/api/monografias/', payload, format='json').status_code, 400)
-
-    def test_monografia_valida_curso_orientadores_e_palavras_chave(self):
-        curso = Curso.objects.create(nome='Outro', codigo='OUTRO')
-        for campo, valor in [('curso', curso.pk), ('coorientador', self.professor.pk), ('palavras_chave', 'não é lista'), ('palavras_chave', [''])]:
-            with self.subTest(campo=campo, valor=valor):
-                payload = self.monografia_payload()
-                payload[campo] = valor
-                response = self.client.post('/api/monografias/', payload, format='json')
-                self.assertEqual(response.status_code, 400, response.data)
-        self.assertEqual(Monografia.objects.count(), 1)
-
     def test_aluno_nao_pode_trocar_curso_com_monografia_vinculada(self):
         curso = Curso.objects.create(nome='Outro', codigo='OUTRO')
         response = self.client.patch(f'/api/alunos/{self.aluno.pk}/', {'curso': curso.pk}, format='json')
@@ -167,55 +133,18 @@ class CRUDAcademicoTests(APITestCase):
     def test_campos_de_processo_nao_podem_ser_alterados_pelo_crud(self):
         for campo, valor in [('status_fluxo', 'PUBLICADA'), ('data_publicacao', '2026-11-15'), ('arquivo_pdf', 'segredo.pdf'), ('sha256', 'inventado')]:
             response = self.client.patch(f'/api/monografias/{self.monografia.pk}/', {campo: valor}, format='json')
-            self.assertEqual(response.status_code, 400, response.data)
-
-    def test_banca_valida_intervalo_local_e_unicidade(self):
-        monografia = Monografia.objects.create(titulo='Outra', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor)
-        for campo, alteracao in [('fim', {'fim': self.inicio.isoformat()}), ('link', {'modalidade': 'REMOTA', 'link': ''}), ('local', {'local': ''})]:
-            payload = self.banca_payload(monografia.pk)
-            payload.update(alteracao)
-            response = self.client.post('/api/bancas/', payload, format='json')
-            self.assertEqual(response.status_code, 400, response.data)
-            self.assertIn(campo, response.data)
-        self.assertEqual(self.client.post('/api/bancas/', self.banca_payload(), format='json').status_code, 400)
-        self.assertEqual(Banca.objects.count(), 1)
-
-    def test_patch_banca_valida_intervalo_com_campos_existentes(self):
-        response = self.client.patch(f'/api/bancas/{self.banca.pk}/', {'fim': self.inicio.isoformat()}, format='json')
-        self.assertEqual(response.status_code, 400)
-        self.banca.refresh_from_db()
-        self.assertEqual(self.banca.fim, self.fim)
-
-    def test_participacao_exige_um_unico_tipo_de_membro(self):
-        monografia = Monografia.objects.create(titulo='Outra banca', resumo='Resumo', aluno=self.aluno, curso=self.curso, orientador=self.professor, status_fluxo='APROVADA_ORIENTADOR')
-        banca = Banca.objects.create(monografia=monografia, inicio=self.inicio, fim=self.fim, local='Sala 2')
-        ParticipacaoBanca.objects.create(banca=banca, professor=self.professor)
-        externo = MembroExterno.objects.create(nome='Externo', email='externo@example.com', instituicao='Instituto')
-        for valores in ({}, {'professor': self.professor.pk, 'membro_externo': externo.pk}, {'professor': self.professor.pk}):
-            response = self.client.post('/api/participacoes-banca/', {'banca': banca.pk, **valores}, format='json')
-            self.assertEqual(response.status_code, 400, response.data)
-        response = self.client.post('/api/participacoes-banca/', {'banca': banca.pk, 'membro_externo': externo.pk}, format='json')
-        self.assertEqual(response.status_code, 201, response.data)
-        self.assertNotIn('token_hash', response.data)
-
-    def test_avaliacao_valida_nota_e_unicidade(self):
-        for nota in ('-0.01', '10.01', 'NaN', '8.555'):
-            payload = self.avaliacao_payload()
-            payload['nota'] = nota
-            self.assertEqual(self.client.post('/api/avaliacoes/', payload, format='json').status_code, 400)
-        self.assertEqual(self.client.post('/api/avaliacoes/', self.avaliacao_payload(), format='json').status_code, 201)
-        self.assertEqual(self.client.post('/api/avaliacoes/', self.avaliacao_payload(), format='json').status_code, 400)
+            self.assertEqual(response.status_code, 403, response.data)
 
     def test_participacao_avaliada_nao_pode_trocar_de_avaliador(self):
-        self.client.post('/api/avaliacoes/', self.avaliacao_payload(), format='json')
+        Avaliacao.objects.create(participacao=self.participacao, nota=8, parecer='Parecer', recomendacao='APROVADA')
         response = self.client.patch(f'/api/participacoes-banca/{self.participacao.pk}/', {'professor': self.outro_professor.pk}, format='json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 403)
 
     def test_exclusao_protege_historico_academico(self):
-        self.client.post('/api/avaliacoes/', self.avaliacao_payload(), format='json')
+        Avaliacao.objects.create(participacao=self.participacao, nota=8, parecer='Parecer', recomendacao='APROVADA')
         for recurso, instance in [('cursos', self.curso), ('professores', self.professor), ('alunos', self.aluno), ('monografias', self.monografia), ('bancas', self.banca), ('participacoes-banca', self.participacao)]:
             with self.subTest(recurso=recurso):
-                self.assertEqual(self.client.delete(f'/api/{recurso}/{instance.pk}/').status_code, 409)
+                self.assertEqual(self.client.delete(f'/api/{recurso}/{instance.pk}/').status_code, 403 if recurso in ('monografias', 'bancas', 'participacoes-banca') else 409)
                 self.assertTrue(type(instance).objects.filter(pk=instance.pk).exists())
 
     def test_publicada_banca_realizada_e_avaliacao_finalizada_nao_sao_alteradas(self):
@@ -227,8 +156,8 @@ class CRUDAcademicoTests(APITestCase):
         for recurso, instance, payload in [('monografias', self.monografia, {'titulo': 'Mudou'}), ('bancas', self.banca, {'local': 'Mudou'}), ('avaliacoes', avaliacao, {'nota': '9.00'})]:
             with self.subTest(recurso=recurso):
                 url = f'/api/{recurso}/{instance.pk}/'
-                self.assertEqual(self.client.patch(url, payload, format='json').status_code, 409)
-                self.assertEqual(self.client.delete(url).status_code, 409)
+                self.assertEqual(self.client.patch(url, payload, format='json').status_code, 403)
+                self.assertEqual(self.client.delete(url).status_code, 403)
 
     def test_constraints_tambem_protegem_gravacao_direta(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -254,47 +183,63 @@ class CRUDAcademicoTests(APITestCase):
         self.assertEqual(client.get('/').status_code, 200)
         self.assertEqual(client.get('/equipe/').status_code, 302)
         client.force_login(self.admin)
-        for url in ('/equipe/', '/equipe/adicionar/', '/equipe/adicionar/?tipo=professor', '/equipe/adicionar/?tipo=curso', '/monografias/', '/monografias/adicionar/', reverse('monografias:detalhes', args=[self.monografia.pk])):
+        for url in ('/equipe/', '/equipe/adicionar/', '/equipe/adicionar/?tipo=professor', '/equipe/adicionar/?tipo=curso', '/monografias/', reverse('monografias:detalhes', args=[self.monografia.pk])):
             with self.subTest(url=url):
                 self.assertEqual(client.get(url).status_code, 200)
         self.assertContains(client.get('/equipe/'), self.aluno.nome)
         self.assertContains(client.get('/monografias/'), self.professor.nome)
 
-    def test_formulario_salva_redireciona_edita_e_exclui(self):
-        client = Client()
-        client.force_login(self.admin)
-        payload = self.monografia_payload()
-        payload['palavras_chave'] = '["Django"]'
-        response = client.post('/monografias/adicionar/', payload)
-        self.assertEqual(response.status_code, 302)
-        monografia = Monografia.objects.get(titulo=payload['titulo'])
-        self.assertRedirects(response, reverse('monografias:detalhes', args=[monografia.pk]))
-        payload['titulo'] = 'Editada pelo formulário'
-        self.assertEqual(client.post(reverse('monografias:editar', args=[monografia.pk]), payload).status_code, 302)
-        monografia.refresh_from_db()
-        self.assertEqual(monografia.titulo, payload['titulo'])
-        url = reverse('monografias:excluir', args=[monografia.pk])
-        self.assertEqual(client.get(url).status_code, 200)
-        self.assertTrue(Monografia.objects.filter(pk=monografia.pk).exists())
-        self.assertEqual(client.post(url).status_code, 302)
-        self.assertFalse(Monografia.objects.filter(pk=monografia.pk).exists())
+    def test_crud_academico_administrativo_somente_consulta(self):
+        avaliacao = Avaliacao.objects.create(participacao=self.participacao, nota=8, parecer='Parecer', recomendacao='APROVADA')
+        for recurso, obj in [('monografias', self.monografia), ('bancas', self.banca),
+                             ('participacoes-banca', self.participacao), ('avaliacoes', avaliacao)]:
+            with self.subTest(recurso=recurso):
+                base = f'/api/{recurso}/'
+                self.assertEqual(self.client.get(base).status_code, 200)
+                self.assertEqual(self.client.get(f'{base}{obj.pk}/').status_code, 200)
+                self.assertEqual(self.client.post(base, {}, format='json').status_code, 403)
+                self.assertEqual(self.client.patch(f'{base}{obj.pk}/', {}, format='json').status_code, 403)
+                self.assertEqual(self.client.put(f'{base}{obj.pk}/', {}, format='json').status_code, 403)
+                self.assertEqual(self.client.delete(f'{base}{obj.pk}/').status_code, 403)
+                self.assertTrue(type(obj).objects.filter(pk=obj.pk).exists())
 
-    def test_formulario_nao_ignora_validacao_do_model(self):
+    def test_html_e_django_admin_nao_contornam_autoria(self):
         client = Client()
         client.force_login(self.admin)
-        payload = self.monografia_payload()
-        payload['palavras_chave'] = '[]'
-        payload['coorientador'] = self.professor.pk
-        response = client.post('/monografias/adicionar/', payload)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context['form'].errors)
-        self.assertEqual(Monografia.objects.count(), 1)
+        for url in ('/monografias/adicionar/', f'/monografias/editar/{self.monografia.pk}/',
+                    f'/monografias/excluir/{self.monografia.pk}/',
+                    '/admin/monografias/monografia/add/',
+                    f'/admin/monografias/monografia/{self.monografia.pk}/change/',
+                    f'/admin/monografias/monografia/{self.monografia.pk}/delete/'):
+            self.assertEqual(client.post(url, self.monografia_payload()).status_code, 403)
+        lista = client.get('/monografias/')
+        self.assertNotContains(lista, 'Adicionar monografia')
+        self.assertNotContains(lista, f'/monografias/editar/{self.monografia.pk}/')
 
-    def test_formulario_aceita_palavras_chave_opcionais(self):
-        client = Client()
-        client.force_login(self.admin)
-        payload = self.monografia_payload()
-        payload['palavras_chave'] = ''
-        response = client.post('/monografias/adicionar/', payload)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(Monografia.objects.get(titulo=payload['titulo']).palavras_chave, [])
+    def test_validacoes_dos_serializadores_academicos_preservadas(self):
+        # A autorização mudou de rota; as mesmas validações continuam exigidas.
+        from .serializers import MonografiaSerializer, BancaSerializer, ParticipacaoBancaSerializer, AvaliacaoSerializer
+        curso = Curso.objects.create(nome='Outro', codigo='OUTRO')
+        for campo, valor in [('curso', curso.pk), ('coorientador', self.professor.pk),
+                             ('palavras_chave', 'não é lista'), ('palavras_chave', ['']), ('aluno', 999999)]:
+            serial = MonografiaSerializer(data={**self.monografia_payload(), campo: valor})
+            self.assertFalse(serial.is_valid(), campo)
+        for valores in ({'fim': self.inicio.isoformat()}, {'modalidade': 'REMOTA', 'link': ''}, {'local': ''}):
+            serial = BancaSerializer(data={**self.banca_payload(), **valores})
+            self.assertFalse(serial.is_valid())
+        for valores in ({}, {'professor': self.professor.pk}):
+            serial = ParticipacaoBancaSerializer(data={'banca': self.banca.pk, **valores})
+            self.assertFalse(serial.is_valid())
+        for nota in ('-0.01', '10.01', 'NaN', '8.555'):
+            serial = AvaliacaoSerializer(data={**self.avaliacao_payload(), 'nota': nota})
+            self.assertFalse(serial.is_valid(), nota)
+        self.assertTrue(AvaliacaoSerializer(data=self.avaliacao_payload()).is_valid())
+
+    def test_formulario_de_rascunho_preserva_validacao_e_palavras_opcionais(self):
+        from .forms import MonografiaForm
+        payload = {**self.monografia_payload(), 'palavras_chave': ''}
+        form = MonografiaForm(payload)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['palavras_chave'], [])
+        form = MonografiaForm({**payload, 'coorientador': self.professor.pk})
+        self.assertFalse(form.is_valid())

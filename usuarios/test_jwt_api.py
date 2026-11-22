@@ -75,3 +75,14 @@ class EmissaoJWTTests(TestCase):
         self.assertEqual(client.post('/api/usuarios/token-microservico/').status_code, 403)
         client.force_login(self.aluno_user)
         self.assertEqual(client.post('/api/usuarios/token-microservico/').status_code, 403)
+
+    def test_assinatura_e_expiracao_usam_configuracao_atual(self):
+        self.payload(self.emitir(self.aluno_user))
+        chave = 'outra-chave-temporaria-de-teste-com-mais-de-32-caracteres'
+        with override_settings(SIMPLE_JWT={**JWT_TESTE, 'SIGNING_KEY': chave,
+                              'ACCESS_TOKEN_LIFETIME': timedelta(minutes=2)}):
+            token = self.emitir(self.aluno_user).json()['access']
+            dados = jwt.decode(token, chave, algorithms=['HS256'])
+            self.assertEqual(dados['exp'] - dados['iat'], 120)
+            with self.assertRaises(jwt.InvalidSignatureError):
+                jwt.decode(token, CHAVE_TESTE, algorithms=['HS256'])

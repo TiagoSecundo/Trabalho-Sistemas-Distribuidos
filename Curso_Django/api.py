@@ -78,8 +78,8 @@ class CRUDViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         try:
             with transaction.atomic():
-                self.serializer_class.service_class.excluir(instance)
                 registrar_acao(self.request.user, instance, 'CRUD_EXCLUSAO')
+                self.serializer_class.service_class.excluir(instance)
         except ProtectedError as exc:
             raise Conflito('Este registro está em uso e não pode ser excluído.') from exc
         except OperacaoNaoPermitida as exc:

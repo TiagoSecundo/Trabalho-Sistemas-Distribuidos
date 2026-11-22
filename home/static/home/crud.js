@@ -141,6 +141,7 @@
                     const actions = document.createElement('td');
                     actions.className = 'crud-actions';
                     [['detalhes', 'Consultar'], ['editar', 'Editar'], ['excluir', 'Excluir']].forEach(([acao, label]) => {
+                        if (config.somenteConsulta && acao !== 'detalhes') return;
                         const link = document.createElement('a');
                         link.href = urlObjeto(config[acao], item.id);
                         link.textContent = label;
@@ -154,7 +155,7 @@
                     const cell = document.createElement('td');
                     cell.colSpan = config.colunas.length + 1;
                     cell.className = 'crud-empty';
-                    cell.textContent = atual.searchParams.get('search') ? 'Nenhum registro encontrado. Tente outro termo.' : 'Nenhum registro cadastrado. Use o botão Adicionar para começar.';
+                    cell.textContent = 'Nenhum registro encontrado. Tente outro termo.';
                     const row = document.createElement('tr');
                     row.append(cell);
                     tbody.append(row);

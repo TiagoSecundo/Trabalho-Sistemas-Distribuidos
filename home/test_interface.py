@@ -34,6 +34,9 @@ class InterfaceTests(TestCase):
         configs += [recurso_monografias(tipo) for tipo in RECURSOS]
         for config in configs:
             for url in (config['lista_url'], config['adicionar_url']):
+                if config.get('somente_consulta') and url == config['adicionar_url']:
+                    self.assertEqual(self.client.get(url).status_code, 403)
+                    continue
                 with self.subTest(url=url):
                     response = self.client.get(url)
                     self.assertEqual(response.status_code, 200)
@@ -76,22 +79,21 @@ class InterfaceTests(TestCase):
     def test_servico_aplica_mesmo_bloqueio_na_api_e_no_html(self):
         self.monografia.status_fluxo = 'PUBLICADA'
         self.monografia.save()
-        self.assertEqual(self.client.get(f'/monografias/editar/{self.monografia.pk}/').status_code, 409)
-        self.assertEqual(self.client.post(f'/monografias/excluir/{self.monografia.pk}/').status_code, 409)
-        self.assertEqual(self.client.patch(f'/api/monografias/{self.monografia.pk}/', {'titulo': 'Alteração indevida'}, content_type='application/json').status_code, 409)
+        self.assertEqual(self.client.get(f'/monografias/editar/{self.monografia.pk}/').status_code, 403)
+        self.assertEqual(self.client.post(f'/monografias/excluir/{self.monografia.pk}/').status_code, 403)
+        self.assertEqual(self.client.patch(f'/api/monografias/{self.monografia.pk}/', {'titulo': 'Alteração indevida'}, content_type='application/json').status_code, 403)
         self.monografia.refresh_from_db()
         self.assertEqual(self.monografia.titulo, 'Estudo de APIs')
 
     def test_formulario_banca_horario_local_e_validacao(self):
+        from monografias.forms import BancaForm
         inicio = (timezone.localtime() + timedelta(days=7)).replace(second=0, microsecond=0)
         payload = {'monografia': self.monografia.pk, 'inicio': inicio.strftime('%Y-%m-%dT%H:%M'), 'fim': (inicio + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M'), 'modalidade': 'REMOTA', 'link': ''}
-        response = self.client.post('/monografias/bancas/adicionar/', payload)
-        self.assertTrue(response.context['form'].errors)
+        self.assertFalse(BancaForm(payload).is_valid())
         payload['link'] = 'https://example.com/reuniao'
-        self.monografia.status_fluxo = 'APROVADA_ORIENTADOR'
-        self.monografia.save(update_fields=['status_fluxo'])
-        self.assertEqual(self.client.post('/monografias/bancas/adicionar/', payload).status_code, 302)
-        self.assertEqual(Banca.objects.get().inicio, inicio)
+        form = BancaForm(payload)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['inicio'], inicio)
 
     def test_nomes_de_relacoes_sao_leitura_e_nao_geram_n_mais_um(self):
         for i in range(5):
@@ -101,7 +103,7 @@ class InterfaceTests(TestCase):
             response = self.client.get('/api/monografias/')
         self.assertEqual(response.json()['results'][0]['aluno_nome'], 'Carla')
         response = self.client.patch(f'/api/monografias/{self.monografia.pk}/', {'aluno_nome': 'Nome falso'}, content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 403)
 
     def test_csrf_da_tela_autoriza_json_e_exige_token(self):
         client = Client(enforce_csrf_checks=True)
