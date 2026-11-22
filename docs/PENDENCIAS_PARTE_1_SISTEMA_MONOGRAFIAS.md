@@ -254,6 +254,6 @@ O professor detalha na **Parte 2 — REST API com Django REST Framework**:
 5. Acesso externo por token e controle IP/VPN administrativo demonstrados.
 6. Commits e *push* documentados para ambos os repositórios, com a versão efetivamente usada pelo grupo.
 
-**Entrega Git:** implementação principal em `affafe4`; integração local concluída nesta revisão. Microserviço na `main` local em `9ee83f6`. O push dos merges locais e do microserviço permanece pendente; portanto, o item 6 de entrega ao grupo ainda não está encerrado.
+**Entrega Git concluída:** o commit principal `affafe4` foi preservado e integrado à `main` pelo merge `f983206`, enviado ao GitHub. O microserviço também teve sua `main` publicada em `9ee83f6`. Ambos os pushes foram aceitos, sem sobrescrever o histórico. O item 6 de entrega ao grupo está encerrado; este registro documental também acompanha a `main` do principal.
 
 **Recomendação:** manter este documento como referência da **Parte 1**. Quando um colega concluir uma tarefa, marcar a caixa, acrescentar o commit e um teste/evidência, em vez de abrir uma nova lista de pendências.

@@ -1007,9 +1007,10 @@ Os e-mails fictícios permanecem visíveis no Mailpit para apresentação.
 ### Fechamento Git da Parte 1
 
 O commit principal `affafe4`, já enviado para a branch remota pelo integrante,
-foi preservado. O fechamento documental registra a integração dessa branch à
-`main` local. No microserviço original, a `main` recebeu o merge `9ee83f6`,
-contendo `a171803` e `b9dd9bb`. Não houve push automático desses merges locais.
+foi preservado. A integração dessa branch à `main` foi concluída pelo merge
+`f983206`. No microserviço original, a `main` recebeu o merge `9ee83f6`,
+contendo `a171803` e `b9dd9bb`. Após autorização explícita do integrante, as
+duas branches `main` foram enviadas ao GitHub com sucesso, sem force push.
 O histórico e a situação de compartilhamento estão em `COMMITS.md`.
 
 As afirmações históricas acima sobre documentos ignorados, ausência de controle

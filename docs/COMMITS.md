@@ -4,7 +4,7 @@
 
 A implementação principal foi preservada no commit `affafe4`, já presente em
 `origin/feature/pendencias-parte-1`. Este fechamento atualiza as referências e
-integra a branch na `main` local com merge `--no-ff`.
+integra a branch na `main` pelo merge `--no-ff` **`f983206`**, já enviado ao GitHub.
 
 O microserviço recebeu `a171803` (extração por submissão, integridade e acesso)
 e `b9dd9bb` (proteção do contexto Docker), integrados à sua `main` local pelo
@@ -26,11 +26,13 @@ Microserviço: **20 aprovados**. Migrações, `check`, JavaScript e verificaçã
 de whitespace conferidos. Evidências e limites em `DESENVOLVIMENTO.md`, seção
 Parte 1, e no checklist `PENDENCIAS_PARTE_1_SISTEMA_MONOGRAFIAS.md`.
 
-**Entrega remota:** a branch principal com `affafe4` já estava no remoto ao
-retomar o fechamento. Os merges locais e os commits do microserviço ainda
-precisam de push para compartilhamento com o grupo; não foram publicados
-automaticamente. O fechamento técnico P1-01–P1-09 está concluído. Redis de
-sessões/busca, gráficos, carga e eventos adicionais permanecem na Parte 2.
+**Entrega remota concluída, por solicitação do integrante:** a `main` do
+principal avançou de `aca1766` para `f983206`; a `main` do microserviço avançou
+de `75636b4` para `9ee83f6`. Ambos os pushes foram aceitos pelo GitHub,
+preservando `affafe4` e todo o histórico, sem force push. Este complemento
+documental também acompanha a `main` do principal. O fechamento técnico e a
+entrega Git P1-01–P1-09 estão concluídos. Redis de sessões/busca, gráficos,
+carga e eventos adicionais permanecem na Parte 2.
 
 ## Entrega local de interface, B12 e B13 — 22/11/2026
 
