@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
-from django.http import Http404
+from django.http import Http404, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -18,6 +18,9 @@ from equipe.models import Aluno, Curso, Professor
 from monografias.models import Avaliacao, Banca, Monografia, ParticipacaoBanca
 from monografias.services import MonografiaService
 from .consultas import monografias_visiveis
+from .integracao_microservico import (
+    MicroservicoIndisponivel, submeter_pdf, analisar_submissao, sincronizar_orientacao, obter_pdf_remoto,
+)
 from .forms import AvaliacaoExternaForm, AvaliacaoPropriaForm, ConfirmarConviteForm, RascunhoAlunoForm, PropostaBancaForm, ParticipantePropostaForm
 from .roles import obter_papeis, pode_convidar_para_banca
 from .agendamento import (
@@ -122,7 +125,11 @@ def trabalho(request, pk):
                     banca.media_final = None
     context.update({
         'monografia': monografia, 'bancas': bancas,
-        'pode_editar': 'Aluno' in context['papeis'] and monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo == 'RASCUNHO',
+        'pode_editar': 'Aluno' in context['papeis'] and monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo in ('RASCUNHO', 'AJUSTES_SOLICITADOS'),
+        'pode_submeter_pdf': monografia.aluno.usuario_id == request.user.pk and monografia.status_fluxo in ('RASCUNHO', 'AJUSTES_SOLICITADOS'),
+        'pode_analisar_submissao': monografia.orientador.usuario_id == request.user.pk and monografia.status_fluxo in ('SUBMETIDA', 'EM_ANALISE_ORIENTADOR'),
+        'pode_visualizar_pdf': (monografia.aluno.usuario_id == request.user.pk or monografia.orientador.usuario_id == request.user.pk) and bool(monografia.microservico_id),
+        'pode_sincronizar_submissao': (monografia.aluno.usuario_id == request.user.pk or monografia.orientador.usuario_id == request.user.pk) and bool(monografia.microservico_id) and monografia.status_fluxo in ('RASCUNHO', 'SUBMETIDA', 'EM_ANALISE_ORIENTADOR', 'AJUSTES_SOLICITADOS', 'APROVADA_ORIENTADOR'),
         'pode_convidar': pode_convidar_para_banca(request.user, monografia),
         'convite_liberado': monografia.status_fluxo in ('APROVADA_ORIENTADOR', 'BANCA_AGENDADA'),
         'pode_propor_banca': (
@@ -424,3 +431,88 @@ def cancelar_proposta_view(request, pk):
     except (OperacaoNaoPermitida, ValidationError) as exc:
         messages.error(request, ' '.join(exc.messages) if isinstance(exc, ValidationError) else str(exc))
     return redirect('usuarios:trabalho', pk=banca.monografia_id)
+
+
+# B09 — fluxo integrado de submissao e orientacao
+
+def _mensagem_erro_integracao(request, exc):
+    if isinstance(exc, ValidationError):
+        mensagem = ' '.join(exc.messages) if hasattr(exc, 'messages') else str(exc)
+    else:
+        mensagem = str(exc)
+    messages.error(request, mensagem)
+
+
+@never_cache
+@login_required
+@require_POST
+def submeter_pdf_view(request, pk):
+    try:
+        submeter_pdf(request.user, pk, request.FILES.get('arquivo'))
+        messages.success(request, 'PDF submetido ao orientador com sucesso.')
+    except (ValidationError, OperacaoNaoPermitida, MicroservicoIndisponivel) as exc:
+        _mensagem_erro_integracao(request, exc)
+    return redirect('usuarios:trabalho', pk=pk)
+
+
+@never_cache
+@login_required
+@require_POST
+def aprovar_submissao_view(request, pk):
+    try:
+        analisar_submissao(request.user, pk, aprovar=True)
+        messages.success(request, 'Submissao aprovada. A banca pode ser proposta.')
+    except (ValidationError, OperacaoNaoPermitida, MicroservicoIndisponivel) as exc:
+        _mensagem_erro_integracao(request, exc)
+    return redirect('usuarios:trabalho', pk=pk)
+
+
+@never_cache
+@login_required
+@require_POST
+def solicitar_ajustes_view(request, pk):
+    try:
+        analisar_submissao(request.user, pk, aprovar=False, motivo=request.POST.get('motivo', ''))
+        messages.success(request, 'Ajustes solicitados. O aluno pode revisar e reenviar.')
+    except (ValidationError, OperacaoNaoPermitida, MicroservicoIndisponivel) as exc:
+        _mensagem_erro_integracao(request, exc)
+    return redirect('usuarios:trabalho', pk=pk)
+
+
+@never_cache
+@login_required
+@require_POST
+def sincronizar_submissao_view(request, pk):
+    try:
+        sincronizar_orientacao(request.user, pk)
+        messages.success(request, 'Status de submissao sincronizado.')
+    except (ValidationError, OperacaoNaoPermitida, MicroservicoIndisponivel) as exc:
+        _mensagem_erro_integracao(request, exc)
+    return redirect('usuarios:trabalho', pk=pk)
+
+
+@never_cache
+@login_required
+@require_safe
+def baixar_pdf_view(request, pk):
+    try:
+        resposta = obter_pdf_remoto(request.user, pk)
+    except (ValidationError, OperacaoNaoPermitida, MicroservicoIndisponivel) as exc:
+        _mensagem_erro_integracao(request, exc)
+        return redirect('usuarios:trabalho', pk=pk)
+
+    def blocos():
+        try:
+            while True:
+                bloco = resposta.read(65536)
+                if not bloco:
+                    break
+                yield bloco
+        finally:
+            resposta.close()
+
+    resultado = StreamingHttpResponse(blocos(), content_type='application/pdf')
+    resultado['Content-Disposition'] = f'inline; filename="monografia-{pk}.pdf"'
+    resultado['X-Content-Type-Options'] = 'nosniff'
+    resultado['Cache-Control'] = 'private, no-store'
+    return resultado

@@ -8,8 +8,16 @@ from .models import Banca, Monografia, ParticipacaoBanca
 class MonografiaService(ServicoCRUD):
     @classmethod
     def validar_alteracao(cls, instance):
-        if instance.status_fluxo != 'RASCUNHO':
-            raise OperacaoNaoPermitida('Somente rascunhos podem ser editados ou excluídos neste cadastro.')
+        if instance.status_fluxo not in ('RASCUNHO', 'AJUSTES_SOLICITADOS'):
+            raise OperacaoNaoPermitida('Somente rascunhos e trabalhos devolvidos para ajustes podem ser editados.')
+
+    @classmethod
+    @transaction.atomic
+    def excluir(cls, instance):
+        instance = type(instance).objects.select_for_update().get(pk=instance.pk)
+        if instance.status_fluxo != 'RASCUNHO' or instance.microservico_id is not None:
+            raise OperacaoNaoPermitida('Monografias ja submetidas nao podem ser excluidas.')
+        return super().excluir(instance)
 
 
 class BancaService(ServicoCRUD):

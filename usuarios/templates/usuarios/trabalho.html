@@ -14,6 +14,44 @@
         <div><dt>Submissão</dt><dd>{{ monografia.data_submissao|date:'d/m/Y H:i'|default:'Não submetido' }}</dd></div>
         <div><dt>Publicação</dt><dd>{{ monografia.data_publicacao|date:'d/m/Y'|default:'Não publicado' }}</dd></div>
     </dl>
+    {% if pode_visualizar_pdf %}
+    <p><a class="btn btn-outline-secondary" href="{% url 'usuarios:visualizar-pdf' monografia.pk %}" target="_blank" rel="noopener">Consultar PDF no microserviço</a></p>
+    {% endif %}
+    {% if monografia.motivo_ajustes and monografia.status_fluxo == 'AJUSTES_SOLICITADOS' %}
+    <p><strong>Orientador solicitou ajustes:</strong> {{ monografia.motivo_ajustes }}</p>
+    {% endif %}
+    {% if pode_submeter_pdf %}
+    <div class="mt-3">
+        <h2>{% if monografia.status_fluxo == 'AJUSTES_SOLICITADOS' %}Reenviar após ajustes{% else %}Submeter monografia{% endif %}</h2>
+        <form method="post" action="{% url 'usuarios:submeter-pdf' monografia.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label for="arquivo-pdf-{{ monografia.pk }}">Arquivo PDF (até 50 MB)</label>
+            <input type="file" id="arquivo-pdf-{{ monografia.pk }}" name="arquivo" accept=".pdf,application/pdf" class="form-control" required>
+            <button class="btn app-cta-btn mt-2" type="submit">Enviar PDF e submeter ao orientador</button>
+        </form>
+    </div>
+    {% endif %}
+    {% if pode_analisar_submissao %}
+    <div class="mt-3">
+        <h2>Parecer do orientador</h2>
+        <form method="post" action="{% url 'usuarios:aprovar-orientacao' monografia.pk %}">
+            {% csrf_token %}
+            <button class="btn app-cta-btn" type="submit">Aprovar submissão</button>
+        </form>
+        <form method="post" class="mt-2" action="{% url 'usuarios:solicitar-ajustes' monografia.pk %}">
+            {% csrf_token %}
+            <label for="motivo-ajustes-{{ monografia.pk }}">Motivo dos ajustes</label>
+            <textarea id="motivo-ajustes-{{ monografia.pk }}" name="motivo" rows="3" maxlength="500" class="form-control" required></textarea>
+            <button class="btn btn-outline-secondary mt-2" type="submit">Devolver para ajustes</button>
+        </form>
+    </div>
+    {% endif %}
+    {% if pode_sincronizar_submissao %}
+    <form method="post" action="{% url 'usuarios:sincronizar-submissao' monografia.pk %}" class="mt-2">
+        {% csrf_token %}
+        <button class="btn btn-link" type="submit">Sincronizar status com o serviço de PDF</button>
+    </form>
+    {% endif %}
     {% if pode_editar %}
     <div class="crud-actions">
         <a class="btn app-cta-btn" href="{% url 'usuarios:editar-rascunho' monografia.pk %}">Editar rascunho</a>

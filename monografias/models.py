@@ -35,6 +35,9 @@ class Monografia(models.Model):
     data_publicacao = models.DateField(null=True, blank=True, editable=False)
     arquivo_pdf = models.FileField(upload_to='monografias/', blank=True, validators=[FileExtensionValidator(['pdf'])])
     sha256 = models.CharField(max_length=64, blank=True, editable=False)
+    # Vinculo entre PKs independentes: uma monografia do principal corresponde a uma do microservico.
+    microservico_id = models.PositiveIntegerField(null=True, blank=True, unique=True, editable=False)
+    motivo_ajustes = models.TextField(blank=True, editable=False)
 
     class Meta:
         ordering = ['-pk']

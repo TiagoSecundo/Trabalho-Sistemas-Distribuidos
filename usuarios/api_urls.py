@@ -1,4 +1,5 @@
 from django.urls import path
+from .submissao_api import SubmeterPdfView, ParecerOrientadorView, SincronizarSubmissaoView
 from .api import (
     MinhaContaView, MinhasMonografiasView, RascunhoAlunoViewSet,
     EmitirConviteExternoView, ConfirmarConviteExternoView,
@@ -12,6 +13,10 @@ from .agendamento_api import (
 )
 
 urlpatterns = [
+    path('monografias/<int:pk>/submeter-pdf/', SubmeterPdfView.as_view(), name='api-submeter-pdf'),
+    path('monografias/<int:pk>/orientacao/aprovar/', ParecerOrientadorView.as_view(), {'decisao': 'aprovar'}, name='api-aprovar-orientador'),
+    path('monografias/<int:pk>/orientacao/ajustes/', ParecerOrientadorView.as_view(), {'decisao': 'ajustes'}, name='api-solicitar-ajustes'),
+    path('monografias/<int:pk>/sincronizar/', SincronizarSubmissaoView.as_view(), name='api-sincronizar-submissao'),
     path('monografias/<int:pk>/propor-banca/', ProporBancaView.as_view(), name='api-propor-banca'),
     path('bancas/<int:pk>/participantes/', AdicionarParticipanteView.as_view(), name='api-adicionar-participante'),
     path('bancas/<int:pk>/cancelar-proposta/', CancelarPropostaView.as_view(), name='api-cancelar-proposta'),

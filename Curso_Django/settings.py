@@ -196,3 +196,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# Endpoint privado do microservico de PDF (na maquina local, Docker expõe 8001).
+MICROSERVICO_API_URL = os.environ.get('MICROSERVICO_API_URL', 'http://127.0.0.1:8001/api/')
+MICROSERVICO_TIMEOUT = int(os.environ.get('MICROSERVICO_TIMEOUT', '60'))
+MICROSERVICO_MAX_UPLOAD_MB = int(os.environ.get('MICROSERVICO_MAX_UPLOAD_MB', '50'))

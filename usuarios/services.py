@@ -52,6 +52,8 @@ def excluir_rascunho(usuario, instance):
         Monografia.objects.select_for_update(of=('self',)),
         pk=instance.pk, aluno__usuario=usuario,
     )
+    if instance.status_fluxo != 'RASCUNHO':
+        raise OperacaoNaoPermitida('Somente rascunhos nunca submetidos podem ser excluídos.')
     pk = instance.pk
     MonografiaService.excluir(instance)
     HistoricoAcao.objects.create(
