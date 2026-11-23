@@ -1,0 +1,12 @@
+<div class="col-12 col-lg-6">
+    <section class="perfil-section h-100" data-indicador="{{ indicador }}" data-endpoint="{{ endpoint }}"
+             aria-labelledby="titulo-{{ indicador }}">
+        <h2 id="titulo-{{ indicador }}" class="h5">{{ titulo }}</h2>
+        <p role="status" class="perfil-caption"></p>
+        <div hidden><canvas role="img" aria-labelledby="titulo-{{ indicador }}"></canvas></div>
+        <details hidden>
+            <summary>Ver valores</summary>
+            <ul></ul>
+        </details>
+    </section>
+</div>

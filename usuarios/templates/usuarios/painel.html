@@ -18,6 +18,7 @@
     <a href="#visao-geral">{% include 'ui/icon.html' with nome='grid' %} Visão geral</a>
     <a href="#meus-trabalhos">{% include 'ui/icon.html' with nome='book' %} Trabalhos <span>{{ resumo.total }}</span></a>
     <a href="#agenda-painel">{% include 'ui/icon.html' with nome='calendar' %} Agenda <span>{{ total_bancas }}</span></a>
+    {% if perfil.slug == 'administrador' or perfil.slug == 'coordenador' %}<a href="{% url 'usuarios:estatisticas' %}">Estatísticas</a>{% endif %}
     {% if cadastros %}<a href="#gestao-painel">{% include 'ui/icon.html' with nome='users' %} Cadastros</a>{% endif %}
 </nav>
 <section id="visao-geral" class="painel-overview" aria-labelledby="titulo-visao-geral">
