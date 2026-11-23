@@ -1,0 +1,40 @@
+{% extends 'usuarios/base.html' %}
+{% load static %}
+{% block title %}Estatísticas · AllTeam{% endblock %}
+{% block perfil_content %}
+<div class="perfil-dashboard">
+    <header class="perfil-hero">
+        <div><h1>Estatísticas de monografias</h1></div>
+        <a class="perfil-primary" href="{% url 'usuarios:painel' %}">Meu painel</a>
+    </header>
+    <section id="estatisticas" aria-label="Indicadores de monografias">
+        <form class="perfil-search">
+            <div>
+                <label for="estatisticas-curso">Curso</label>
+                <select id="estatisticas-curso" name="curso">
+                    <option value="">Todos os cursos disponíveis</option>
+                    {% for curso in cursos %}
+                        <option value="{{ curso.pk }}">{{ curso.nome }} ({{ curso.codigo }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn painel-filter-button" type="submit">Filtrar</button>
+        </form>
+        <noscript><p>Ative o JavaScript para consultar os gráficos.</p></noscript>
+        <div class="row g-3 mt-1">
+            {% url 'api-estatisticas-por-curso' as url_curso %}
+            {% url 'api-estatisticas-por-orientador' as url_orientador %}
+            {% url 'api-estatisticas-por-ano-defesa' as url_ano %}
+            {% url 'api-estatisticas-taxa-aprovacao' as url_taxa %}
+            {% url 'api-estatisticas-tempo-medio' as url_tempo %}
+            {% include 'usuarios/grafico_estatisticas.html' with titulo='Monografias por curso' indicador='curso' endpoint=url_curso %}
+            {% include 'usuarios/grafico_estatisticas.html' with titulo='Monografias por orientador' indicador='orientador' endpoint=url_orientador %}
+            {% include 'usuarios/grafico_estatisticas.html' with titulo='Monografias por ano de defesa' indicador='ano' endpoint=url_ano %}
+            {% include 'usuarios/grafico_estatisticas.html' with titulo='Taxa de aprovação' indicador='taxa' endpoint=url_taxa %}
+            {% include 'usuarios/grafico_estatisticas.html' with titulo='Tempo médio entre submissão e defesa' indicador='tempo' endpoint=url_tempo %}
+        </div>
+    </section>
+</div>
+<script defer src="{% static 'usuarios/chart.umd.js' %}"></script>
+<script defer src="{% static 'usuarios/estatisticas.js' %}"></script>
+{% endblock %}

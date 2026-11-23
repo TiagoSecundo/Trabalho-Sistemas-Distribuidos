@@ -1,4 +1,6 @@
 from django.urls import path
+from . import estatisticas
+from .estatisticas_api import EstatisticasView
 from .submissao_api import SubmeterPdfView, ParecerOrientadorView, SincronizarSubmissaoView
 from .api import (
     MinhaContaView, MinhasMonografiasView, RascunhoAlunoViewSet,
@@ -14,6 +16,16 @@ from .agendamento_api import (
 )
 
 urlpatterns = [
+    path('estatisticas/por-curso/', EstatisticasView.as_view(indicador=estatisticas.por_curso),
+         name='api-estatisticas-por-curso'),
+    path('estatisticas/por-orientador/', EstatisticasView.as_view(indicador=estatisticas.por_orientador),
+         name='api-estatisticas-por-orientador'),
+    path('estatisticas/por-ano-defesa/', EstatisticasView.as_view(indicador=estatisticas.por_ano_defesa),
+         name='api-estatisticas-por-ano-defesa'),
+    path('estatisticas/taxa-aprovacao/', EstatisticasView.as_view(indicador=estatisticas.taxa_aprovacao),
+         name='api-estatisticas-taxa-aprovacao'),
+    path('estatisticas/tempo-medio/', EstatisticasView.as_view(indicador=estatisticas.tempo_medio),
+         name='api-estatisticas-tempo-medio'),
     path('monografias/<int:pk>/documentos/', DocumentosView.as_view(), name='api-documentos'),
     path('monografias/<int:pk>/documentos/<int:documento_id>/conferir/', ConferirDocumentoView.as_view(), name='api-conferir-documento'),
     path('monografias/<int:pk>/documentos/<int:documento_id>/arquivo/', DocumentoArquivoView.as_view(), name='api-documento-arquivo'),

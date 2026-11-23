@@ -1,10 +1,11 @@
 from django.urls import path
-from . import views
+from . import estatisticas_views, views
 from . import publicacao_views
 
 app_name = 'usuarios'
 
 urlpatterns = [
+    path('estatisticas/', estatisticas_views.dashboard, name='estatisticas'),
     path('trabalhos/<int:pk>/documentos/', publicacao_views.documentos, name='documentos'),
     path('trabalhos/<int:pk>/documentos/<int:documento_id>/conferir/', publicacao_views.conferir, name='conferir-documento'),
     path('trabalhos/<int:pk>/documentos/<int:documento_id>/arquivo/', publicacao_views.arquivo, name='documento-arquivo'),
